@@ -1,0 +1,53 @@
+# HNSW索引参数配置
+
+# 索引创建参数
+index_params:
+  # 每个节点的最大连接数
+  M: [8, 16, 24, 32, 48, 64]
+  
+  # 构建索引时的候选者数量
+  efConstruction: [100, 200, 400, 800]
+  
+# 查询参数
+search_params:
+  # 搜索时的候选者数量
+  ef: [50, 100, 200, 400, 800]
+  
+# 参数组合
+# 如果为空，将生成所有参数的笛卡尔积
+# 如果指定，将只测试指定的组合
+param_combinations:
+  - {M: 16, efConstruction: 200}
+  - {M: 32, efConstruction: 400}
+  - {M: 64, efConstruction: 800}
+
+# 使用条件
+conditions:
+  # 表大小范围
+  table_size:
+    min: 0           # 最小表大小
+    max: 100000000   # 最大表大小（一亿）
+  
+  # 维度范围
+  dimension:
+    min: 0           # 最小维度
+    max: 10000       # 最大维度
+    
+# 推荐规则
+recommendation_rules:
+  # M参数推荐
+  M:
+    default: 32
+    low_dim: 48      # 低维度时(<=128)
+    high_dim: 16     # 高维度时(>512)
+    
+  # efConstruction参数推荐
+  efConstruction:
+    formula: "M * 10"  # 基于M的值
+    min: 100
+    max: 800
+    
+  # ef参数推荐
+  ef:
+    qps_sensitive: 100     # 当QPS权重高时
+    recall_sensitive: 400  # 当召回率权重高时

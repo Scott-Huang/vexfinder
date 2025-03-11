@@ -1,0 +1,38 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: OpenGaussIvfflatVector
+    disabled: false
+    module: algorithms.opengauss
+    name: opengauss-ivfflat
+    run_groups:
+      base:
+        args: [ [ 1024, 2048 ] ]
+        query_args: [[100, 200]]
+  - base_args: [ '@metric' ]
+    constructor: OpenGaussIvfPQVector
+    disabled: false
+    module: algorithms.opengauss
+    name: opengauss-ivfpq
+    run_groups:
+      base:
+        args: [ [ 1024, 2048 ], [32, 64], [8, 16]]
+        query_args: [ [ 100, 200 ] ]
+  - base_args: [ '@metric' ]
+    constructor: OpenGaussHnswVector
+    disabled: false
+    module: algorithms.opengauss
+    name: opengauss-hnsw
+    run_groups:
+      base:
+        args: [ [ 16, 24, 32 ], [200, 400] ]
+        query_args: [ [ 100, 200, 400 ] ]
+  - base_args: [ '@metric' ]
+    constructor: OpenGaussDiskannVector
+    disabled: false
+    module: algorithms.opengauss
+    name: opengauss-diskann
+    run_groups:
+      base:
+        args: [ ]
+        query_args: [ [ 50, 100, 200, 500, 1000 ] ]

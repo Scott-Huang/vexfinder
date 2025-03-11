@@ -1,0 +1,53 @@
+# 向量数据库索引参数推荐工具默认配置
+
+# 测试全局配置
+test:
+  output_dir: "cursor/results"  # 输出目录
+  log_level: "info"             # 日志级别
+  
+# 采样配置
+sampling:
+  index_ratio: 0.1         # 用于创建索引的数据比例
+  method: "random"         # 采样方法：random, stratified, cluster
+  seed: 42                 # 随机种子
+  
+# 查询数据集配置
+query_dataset:
+  source: "auto"           # 来源：auto或user_json
+  json_path: ""            # 用户JSON文件路径（如果source=user_json）
+  query_count: 10000       # 自动采样的查询数量
+  
+# 性能测试配置
+performance:
+  topk: 100                # 查询返回结果数
+  concurrency: [1, 4, 16]  # 并发查询数
+  metrics:
+    - qps                  # 每秒查询数
+    - recall               # 召回率
+    - latency              # 平均延迟
+  weights:
+    qps: 0.6               # QPS权重
+    recall: 0.4            # 召回率权重
+    
+# 可视化配置
+visualization:
+  plot_format: "png"       # 图表格式
+  plot_dpi: 300            # 分辨率
+  
+# 数据库连接配置 - 将被各数据库适配器覆盖
+database:
+  milvus:
+    host: "localhost"
+    port: "19530"
+  opengauss:
+    host: "localhost"
+    port: "5432"
+    user: "gaussdb"
+    password: "Password123@"
+    database: "postgres"
+  pgvector:
+    host: "localhost"
+    port: "5432"
+    user: "postgres"
+    password: "postgres"
+    database: "postgres"

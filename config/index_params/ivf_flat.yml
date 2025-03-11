@@ -1,0 +1,42 @@
+# IVF-FLAT索引参数配置
+
+# 索引创建参数
+index_params:
+  # 聚类中心数量参数范围
+  nlist: [128, 256, 512, 1024, 2048, 4096]
+  
+# 查询参数
+search_params:
+  # 搜索聚类中心数量参数范围
+  nprobe: [1, 8, 16, 32, 64, 128, 256]
+  
+# 参数组合
+# 如果为空，将生成所有参数的笛卡尔积
+# 如果指定，将只测试指定的组合
+param_combinations: []
+
+# 使用条件
+conditions:
+  # 表大小范围
+  table_size:
+    min: 0           # 最小表大小
+    max: 100000000   # 最大表大小（一亿）
+  
+  # 维度范围
+  dimension:
+    min: 0           # 最小维度
+    max: 10000       # 最大维度
+    
+# 推荐规则
+recommendation_rules:
+  # 根据数据集大小推荐nlist
+  nlist:
+    formula: "sqrt(N) * 4"  # N为数据集大小
+    min: 128
+    max: 16384
+    
+  # 根据QPS和召回率推荐nprobe
+  nprobe:
+    default: 16
+    qps_sensitive: 8       # 当QPS权重高时
+    recall_sensitive: 64   # 当召回率权重高时
