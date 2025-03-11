@@ -9,7 +9,6 @@ tqdm>=4.62.0
 # 数据库客户端
 pymilvus>=2.2.0
 psycopg2-binary>=2.9.0
-pg-vector>=0.1.0
 
 # 可选依赖
 scikit-learn>=1.0.0  # 用于数据处理和分析
