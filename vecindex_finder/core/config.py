@@ -3,129 +3,145 @@
 
 import os
 import yaml
-import logging
-from typing import Dict, Any, Optional, List
+import multiprocessing
+from typing import Dict, Any, Optional, List, Tuple
+from core.logging import logger
 
-logger = logging.getLogger(__name__)
 
 class Config:
     """配置管理类"""
-    
     def __init__(self, config_path: Optional[str] = None):
         """
         初始化配置管理器
-        
         Args:
             config_path: 配置文件路径，如果为None则使用默认路径
         """
         self.config_path = config_path
-        self.config = {}
-        self.load_config()
+        self.parallel_workers = 8
+        self.connection_config = {}
+        self.table_info_config = {}
+        self.sampling_config = {}
+        self.query_config = {}
+        self.performance_config = {}
+        self.index_config = {}
         
+        self.load_config()
+        # 检查并设置特定配置
+        self.check_and_setup_config()
+    
     def load_config(self) -> Dict[str, Any]:
         """
-        加载配置
+        加载OpenGauss配置
         
         Returns:
             配置字典
         """
-        # 加载默认配置
-        default_config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                         'config', 'default.yml')
-                                         
-        if os.path.exists(default_config_path):
-            with open(default_config_path, 'r', encoding='utf-8') as f:
-                self.config = yaml.safe_load(f) or {}
-                logger.info(f"已加载默认配置: {default_config_path}")
+        if self.config_path is None:
+            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.config_path = os.path.join(current_dir, 'config.yml')
+        
+        # 检查配置文件是否存在
+        if not os.path.exists(self.config_path):
+            raise FileNotFoundError(f"配置文件 {self.config_path} 不存在")
+        
+        try:
+            with open(self.config_path, 'r') as f:
+                self.config = yaml.safe_load(f)
+                logger.info(f"成功加载配置文件: {self.config_path}")
+                return self.config
+        except Exception as e:
+            logger.error(f"加载配置文件失败: {e}")
+            raise
+    
+    def check_and_setup_config(self) -> None:
+        """
+        检查并设置特定配置
+        
+        Raises:
+            ValueError: 如果配置文件中缺少必要信息
+        """
+
+        # 设置并行工作线程数
+        if self.config.get('parallel_workers') is not None:
+            self.parallel_workers = int(self.config['parallel_workers'])
         else:
-            logger.warning(f"默认配置文件不存在: {default_config_path}")
-            self.config = {}
-            
-        # 如果指定了配置文件，则加载并覆盖默认配置
-        if self.config_path and os.path.exists(self.config_path):
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                user_config = yaml.safe_load(f) or {}
-                
-            # 合并配置
-            self.merge_config(self.config, user_config)
-            logger.info(f"已加载用户配置: {self.config_path}")
-            
-        return self.config
+            self.parallel_workers = max(1, int(multiprocessing.cpu_count() * 0.75))
         
-    def merge_config(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        合并配置
+        # 检查必要配置项是否存在
+        required_sections = ['connection', 'table_info', 'sampling', 'query', 'performance', 'index']
+        for section in required_sections:
+            if section not in self.config:
+                raise ValueError(f"配置文件中缺少必要部分: {section}")
         
-        Args:
-            base: 基础配置
-            override: 覆盖配置
-            
-        Returns:
-            合并后的配置
-        """
-        for key, value in override.items():
-            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-                # 如果两边都是字典，则递归合并
-                self.merge_config(base[key], value)
-            else:
-                # 否则直接覆盖
-                base[key] = value
-                
-        return base
+        # 检查connection配置
+        required_connection_fields = ['host', 'port', 'user', 'password', 'dbname']
+        for field in required_connection_fields:
+            if field not in self.config['connection']:
+                raise ValueError(f"连接配置中缺少必要字段: {field}")
         
-    def get(self, key: str, default: Any = None) -> Any:
-        """
-        获取配置项
+        self.connection_config = self.config['connection']
+
+        # 检查table_info配置
+        required_table_info_fields = ['table_name', 'vector_column_name', 'dimension', 'metric']
+        for field in required_table_info_fields:
+            if field not in self.config['table_info']:
+                raise ValueError(f"table_info配置中缺少必要字段: {field}")
         
-        Args:
-            key: 配置键，支持点号分隔的嵌套路径，如 'sampling.ratio'
-            default: 默认值
-            
-        Returns:
-            配置值
-        """
-        if '.' not in key:
-            return self.config.get(key, default)
-            
-        # 处理嵌套配置
-        parts = key.split('.')
-        current = self.config
+        self.table_info_config = self.config['table_info']
+        self.table_info_config['sample_table_name'] = f"{self.table_info_config['table_name']}_sample_vecindex_finder"
+        self.table_info_config['query_table_name'] = f"{self.table_info_config['table_name']}_query_vecindex_finder"
         
-        for part in parts:
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return default
-                
-        return current
+        # 检查采样配置
+        required_sampling_fields = ['default_ratio', 'min_sample_count', 'max_sample_count']
+        for field in required_sampling_fields:
+            if field not in self.config['sampling']:
+                raise ValueError(f"采样配置中缺少必要字段: {field}")
         
-    def load_index_params(self, index_type: str) -> Dict[str, Any]:
-        """
-        加载特定索引类型的参数
+        self.sampling_config = self.config['sampling']
+
+        # 检查query配置
+        required_query_fields = ['query_get_type', 'query_data_path']
+        for field in required_query_fields:
+            if field not in self.config['query']:
+                raise ValueError(f"query配置中缺少必要字段: {field}")
+
+        self.query_config = self.config['query']
+
+        # 检查性能配置
+        if 'limit' not in self.config['performance'] or self.config['performance']['limit'] is None:
+            self.performance_config['limit'] = 100
+        else:
+            self.performance_config['limit'] = self.config['performance']['limit']
         
-        Args:
-            index_type: 索引类型，如 'ivfflat', 'hnsw'
-            
-        Returns:
-            索引参数配置
-        """
-        params_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                 'config', 'index_params', f"{index_type}.yml")
-                                 
-        if not os.path.exists(params_file):
-            logger.warning(f"索引参数文件不存在: {params_file}，将使用默认参数")
-            return {}
-            
-        with open(params_file, 'r', encoding='utf-8') as f:
-            params = yaml.safe_load(f) or {}
-            
-        logger.info(f"已加载索引参数: {index_type}")
-        return params
+        if 'min_recall' not in self.config['performance'] or self.config['performance']['min_recall'] is None:
+            self.performance_config['min_recall'] = 0.8
+        else:
+            self.performance_config['min_recall'] = self.config['performance']['min_recall']
+
+        if 'max_recall' not in self.config['performance'] or self.config['performance']['max_recall'] is None:
+            self.performance_config['max_recall'] = 0.999
+        else:
+            self.performance_config['max_recall'] = self.config['performance']['max_recall']
         
-    def __str__(self) -> str:
-        """字符串表示"""
-        return yaml.dump(self.config, default_flow_style=False, allow_unicode=True)
+        if 'limit' not in self.config['performance'] or self.config['performance']['limit'] is None:
+            self.performance_config['limit'] = 100
+        else:
+            self.performance_config['limit'] = self.config['performance']['limit']
+
+
+        # 检查索引配置
+        required_index_fields = ['find_index_type', 'auto']
+        for field in required_index_fields:
+            if field not in self.config['index']:
+                raise ValueError(f"索引配置中缺少必要字段: {field}")
         
-    def __repr__(self) -> str:
-        """对象表示"""
-        return f"Config(path={self.config_path}, items={len(self.config)})"
+        self.index_config = self.config['index']
+
+        if not self.index_config['auto']:
+            if self.index_config['find_index_type'] not in self.config['index']:
+                raise ValueError(f"索引配置中缺少必要字段: {self.index_config['find_index_type']}")
+
+
+
+# 创建全局配置实例
+config = Config()
