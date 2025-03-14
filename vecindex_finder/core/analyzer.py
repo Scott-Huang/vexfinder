@@ -3,16 +3,22 @@
 
 import time
 import importlib
+import os
+import datetime
 from core.config import IndexConfig, PerformanceConfig
 from core.engine import DatabaseEngine, db_engine
 from core.module import MODULE_MAP, BaseModule
 from core.types import QueryData, IndexAndQueryParam, TableInfoConfig
 from core.recall import get_recall_values
 from core.param_builder import IndexParamBuilder
-from core.result_collector import ResultCollector
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, Any, Optional
 import copy
 from core.logging import logger
+
+# 直接导入optuna相关模块
+import optuna
+from optuna.visualization import plot_optimization_history, plot_param_importances
+from optuna.visualization import plot_parallel_coordinate, plot_contour
 
 
 def instantiate_module(module_name: str, *args, **kwargs) -> BaseModule:
@@ -59,32 +65,352 @@ class Analyzer:
         self.index_config = index_config
         self.db_engine = db_engine_obj or db_engine
         self.query_data = query_data
-        self.limit = performance.limit
+        self.performance = performance
         self.min_recall = performance.min_recall
-        self.tolerance = performance.tolerance
         self.table_info = table_info
-                # 创建结果收集器
-        logger.info("创建结果收集器")
-        self.result_collector = ResultCollector(index_config.find_index_type)
+
+        # 创建结果存储目录
+        if not os.path.isdir(os.path.join("results")):
+            os.makedirs(os.path.join("results"))
+
+        # 创建索引类型_日期时间格式的文件夹
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        self.result_dir = os.path.join("results", f"{self.index_config.find_index_type}_{timestamp}")
+        if not os.path.isdir(self.result_dir):
+            os.makedirs(self.result_dir)
+
 
     def analyze(self):
-
-        # 获取索引参数
-        param_builder = IndexParamBuilder(self.table_info.sample_table_count, self.table_info.dimension, self.index_config.find_index_type)
+        """
+        使用Optuna优化索引创建参数，让analyze_with_param自动找到满足召回率要求的查询参数
+        """
+        # 获取理论最优参数作为起点
+        param_builder = IndexParamBuilder(self.table_info.sample_table_count, 
+                                          self.table_info.dimension, 
+                                          self.index_config.find_index_type)
         theoretical_params = param_builder.get_theoretical_param()
-        logger.info(f"理论最优索引参数: {theoretical_params}")
-
-        # 分析理论最优索引参数
-        result = self.analyze_with_param(theoretical_params)
-        self.result_collector.add_best_result(result)
-
-        # 根据理论最优索引参数的返回结果，探测更多索引参数。比如查看创建索引的时间是否可以减少，查询时间是否可以减少，索引大小是否可以减少等。
-        # 可以循环调用param_builder.recommend_new_params方法，根据上一次的结果来获取更多的索引参数。
-        pass
+        logger.info(f"获取理论最优参数作为优化起点: {theoretical_params}")
         
-
-
-        return result
+        # 检查理论参数中index_param是否为空
+        is_index_param_empty = not theoretical_params.index_param or all(
+            k.endswith('_range') for k in theoretical_params.index_param.keys()
+        )
+        
+        # 如果索引参数为空，则直接使用理论参数调用analyze_with_param
+        if is_index_param_empty:
+            logger.info("索引参数为空，仅需搜索查询参数，跳过索引参数优化过程")
+            # 获取结果
+            result = self.analyze_with_param(theoretical_params)
+            return result
+            
+        # 索引参数范围定义 (根据不同索引类型)
+        index_param_ranges = {
+            "ivfflat": {
+                "ivf_nlist": (10, 2000),  # IVF聚类中心数量
+            },
+            "hnsw": {
+                "ef_construction": (40, 800),  # 建图时的候选邻居数
+                "m": (8, 96),  # 每个节点的边数
+            },
+            "ivfpq": {
+                "ivf_nlist": (10, 2000),  # IVF聚类中心数量
+                "num_subquantizers": (1, 64),  # PQ编码的子向量数量
+            },
+            "diskann": {}
+        }
+        
+        # 获取向量维度，用于IVFPQ参数约束
+        vector_dimension = self.table_info.dimension
+        logger.info(f"向量维度: {vector_dimension}")
+        
+        # 如果是IVFPQ索引类型，计算合法的num_subquantizers值列表
+        # num_subquantizers需要满足两个条件：
+        # 1. 小于原始向量维度
+        # 2. 原始向量维度必须是num_subquantizers的整数倍
+        if self.index_config.find_index_type == "ivfpq":
+            valid_subquantizers = []
+            for i in range(1, min(64, vector_dimension)):
+                if vector_dimension % i == 0:
+                    valid_subquantizers.append(i)
+            
+            if not valid_subquantizers:
+                logger.warning(f"无法找到合适的num_subquantizers值，向量维度: {vector_dimension}")
+                # 如果找不到合法值，使用一些常用值作为候选，但后续检查是否可用
+                valid_subquantizers = [1]
+            
+            logger.info(f"合法的num_subquantizers值: {valid_subquantizers}")
+            # 更新IVFPQ参数范围定义
+            if valid_subquantizers:
+                index_param_ranges["ivfpq"]["num_subquantizers"] = (min(valid_subquantizers), max(valid_subquantizers))
+        
+        index_type = self.index_config.find_index_type
+                
+        # 保存优化结果的列表
+        optimization_results = []
+        
+        # 定义目标函数
+        def objective(trial):
+            # 构建索引参数 - 只探索索引参数
+            index_param = {}
+            
+            # 复制原始的理论参数作为基础
+            for key, value in theoretical_params.index_param.items():
+                if not key.endswith('_range'):
+                    index_param[key] = value
+            
+            # 针对指定索引类型，让Optuna提供新的索引参数
+            for param_name, param_range in index_param_ranges.get(index_type, {}).items():
+                # IVFPQ索引类型的num_subquantizers参数需要特殊处理
+                if index_type == "ivfpq" and param_name == "num_subquantizers":
+                    # 使用discrete_uniform来选择合法的子量化器数量
+                    if valid_subquantizers:
+                        param_value = trial.suggest_categorical(param_name, valid_subquantizers)
+                    else:
+                        # 如果没有合法值，使用默认值并记录警告
+                        param_value = 1
+                        logger.warning(f"使用默认num_subquantizers={param_value}，因为没有找到符合维度{vector_dimension}的合法值")
+                else:
+                    # 使用理论最优参数作为参考点
+                    theoretical_value = index_param.get(param_name, (param_range[0] + param_range[1]) // 2)
+                    
+                    # 在理论值附近搜索，但不超出范围
+                    min_value = max(param_range[0], int(theoretical_value * 0.5))
+                    max_value = min(param_range[1], int(theoretical_value * 4.0))
+                    
+                    param_value = trial.suggest_int(param_name, min_value, max_value)
+                
+                index_param[param_name] = param_value
+                # 添加范围参数
+                index_param[f"{param_name}_range"] = param_range
+            
+            # 使用理论最优的查询参数作为起点
+            query_param = {}
+            for key, value in theoretical_params.query_param.items():
+                query_param[key] = value
+            
+            # 对HNSW索引类型添加参数约束：ef_construction必须大于等于2*m
+            if index_type == "hnsw" and "m" in index_param and "ef_construction" in index_param:
+                if index_param["ef_construction"] < 2 * index_param["m"]:
+                    logger.info(f"调整HNSW参数：ef_construction从{index_param['ef_construction']}增加到{2 * index_param['m']}，以满足ef_construction >= 2*m的要求")
+                    index_param["ef_construction"] = max(index_param["ef_construction"], 2 * index_param["m"])
+            
+            # 创建参数对象
+            param = IndexAndQueryParam(
+                index_type=index_type,
+                index_param=index_param,
+                query_param=query_param
+            )
+            
+            try:
+                # 使用analyze_with_param函数分析参数
+                # 它会自动为当前索引找到满足召回率要求的最佳查询参数
+                result = self.analyze_with_param(param)
+                
+                # 如果找不到满足召回率的参数，返回惩罚值
+                if not result["success"]:
+                    logger.warning(f"索引参数 {index_param} 无法满足最低召回率要求")
+                    return float('inf')
+                
+                # 创建一个综合得分 (权重可调整)
+                # 索引创建时间权重
+                index_time_weight = self.performance.weight["create_index_time"]
+                # 索引大小权重
+                index_size_weight = self.performance.weight["index_size"]
+                # 查询性能权重
+                qps_weight = self.performance.weight["qps"]
+                
+                # 获取查询时间(毫秒) - 直接使用已有的avg_query_time
+                query_time_ms = result["best_performance"]["avg_query_time"] * 1000.0  # 转换为毫秒
+                
+                # 计算综合得分 - 越小越好
+                # 使用更健壮的归一化方法
+                # 对于索引创建时间：转换为秒并直接使用
+                # 对于索引大小：转换为MB并直接使用 
+                # 对于查询时间：转换为毫秒并直接使用
+                # 这样三个指标的量级更接近，避免某个指标因数值过大或过小而被放大或忽略
+                score = (
+                    index_time_weight * result["create_index_time"] + 
+                    index_size_weight * (result["index_size"] / (1024 * 1024)) +  # 转为MB
+                    qps_weight * query_time_ms  # 使用毫秒单位的查询时间
+                )
+                
+                # 记录原始指标值以便分析
+                normalized_metrics = {
+                    "create_index_time_s": result["create_index_time"],
+                    "index_size_mb": result["index_size"] / (1024 * 1024),
+                    "query_time_ms": query_time_ms,
+                    "avg_query_time_s": result["best_performance"]["avg_query_time"],
+                    "qps": result["best_performance"]["qps"],
+                    "weighted_create_index_time": index_time_weight * result["create_index_time"],
+                    "weighted_index_size": index_size_weight * (result["index_size"] / (1024 * 1024)),
+                    "weighted_query_time": qps_weight * query_time_ms
+                }
+                
+                # 保存结果以便后续分析
+                trial_result = {
+                    "trial_number": trial.number,
+                    "index_param": result["index_param"],
+                    "best_query_param": result["best_query_param"],
+                    "create_index_time": result["create_index_time"],
+                    "index_size": result["index_size"],
+                    "score": score,
+                    "best_performance": result["best_performance"],
+                    "normalized_metrics": normalized_metrics  # 添加归一化指标
+                }
+                optimization_results.append(trial_result)
+                
+                # 记录本次评估结果以便Optuna分析
+                trial.set_user_attr("recall", result["best_performance"]["recall"])
+                trial.set_user_attr("create_index_time", result["create_index_time"])
+                trial.set_user_attr("index_size", result["index_size"])
+                trial.set_user_attr("avg_query_time", result["best_performance"]["avg_query_time"])
+                trial.set_user_attr("qps", result["best_performance"]["qps"])
+                
+                # 记录归一化指标
+                for key, value in normalized_metrics.items():
+                    trial.set_user_attr(key, value)
+                
+                # 记录详细的评分组成
+                logger.info(f"试验 {trial.number} 评分详情:")
+                logger.info(f"  总分: {score:.6f}")
+                logger.info(f"  创建索引时间: {result['create_index_time']:.2f}秒 -> 权重贡献: {normalized_metrics['weighted_create_index_time']:.6f}")
+                logger.info(f"  索引大小: {normalized_metrics['index_size_mb']:.2f}MB -> 权重贡献: {normalized_metrics['weighted_index_size']:.6f}")
+                logger.info(f"  查询时间: {normalized_metrics['query_time_ms']:.2f}毫秒 -> 权重贡献: {normalized_metrics['weighted_query_time']:.6f}")
+                
+                # 保存每次试验的详细结果
+                import json
+                with open(os.path.join(self.result_dir, f"trial_{trial.number}.json"), "w") as f:
+                    json.dump({
+                        "trial_number": trial.number,
+                        "best_query_param": {k: v for k, v in result["best_query_param"].items() if not k.endswith('_range')},
+                        "create_index_time": result["create_index_time"],
+                        "index_size": result["index_size"] / (1024 * 1024),  # MB
+                        "recall": result["best_performance"]["recall"],
+                        "avg_query_time": result["best_performance"]["avg_query_time"],
+                        "qps": result["best_performance"]["qps"],
+                        "score": score,
+                        "normalized_metrics": normalized_metrics  # 添加归一化指标
+                    }, f, indent=2)
+                
+                return score
+                
+            except Exception as e:
+                logger.error(f"参数评估失败: {str(e)}")
+                # 记录错误
+                with open(os.path.join(self.result_dir, f"error_trial_{trial.number}.txt"), "w") as f:
+                    f.write(f"Error: {str(e)}\n")
+                    f.write(f"Index params: {index_param}\n")
+                return float('inf')
+        
+        # 创建学习过程 - 使用内存存储而不是SQLite
+        study_name = f"optimize_{index_type}_index"
+        study = optuna.create_study(
+            study_name=study_name,
+            direction='minimize'
+        )
+        
+        # 可以添加理论最优解作为初始点
+        logger.info("添加理论最优解作为初始点")
+        def theoretical_params_func():
+            return {
+                param_name: theoretical_params.index_param[param_name] 
+                for param_name in index_param_ranges.get(index_type, {})
+                if param_name in theoretical_params.index_param and not param_name.endswith('_range')
+            }
+        
+        try:
+            study.enqueue_trial(theoretical_params_func())
+        except Exception as e:
+            logger.warning(f"添加理论最优解失败: {e}")
+        
+        # 运行优化过程
+        n_trials = 20  # 可以根据计算资源和时间调整
+        logger.info(f"开始索引参数优化，将尝试{n_trials}组索引参数")
+        
+        try:
+            study.optimize(objective, n_trials=n_trials)
+        except KeyboardInterrupt:
+            logger.warning("用户中断了优化过程")
+        except Exception as e:
+            logger.error(f"优化过程出错: {e}")
+        
+        # 获取最佳参数
+        if study.best_trial:
+            best_params = study.best_params
+            best_trial = study.best_trial
+            
+            logger.info(f"找到的最佳索引参数: {best_params}")
+            logger.info(f"最佳参数的评估指标:")
+            logger.info(f"- 召回率: {best_trial.user_attrs['recall']:.6f}")
+            logger.info(f"- 创建索引时间: {best_trial.user_attrs['create_index_time']:.2f}秒")
+            logger.info(f"- 索引大小: {best_trial.user_attrs['index_size']/1024/1024:.2f}MB")
+            logger.info(f"- 平均查询时间: {best_trial.user_attrs['avg_query_time']:.6f}秒")
+            logger.info(f"- QPS: {best_trial.user_attrs['qps']:.4f}")
+            
+            # 可视化优化过程
+            try:
+                # 绘制优化历史
+                fig1 = plot_optimization_history(study)
+                fig1.write_html(os.path.join(self.result_dir, "optimization_history.html"))
+                
+                # 绘制参数重要性
+                fig2 = plot_param_importances(study)
+                fig2.write_html(os.path.join(self.result_dir, "param_importances.html"))
+                
+                # 绘制参数关系
+                fig3 = plot_parallel_coordinate(study)
+                fig3.write_html(os.path.join(self.result_dir, "parallel_coordinate.html"))
+                
+                # 绘制参数等高线图
+                if len(best_params) >= 2:
+                    try:
+                        fig4 = plot_contour(study)
+                        fig4.write_html(os.path.join(self.result_dir, "contour.html"))
+                    except Exception:
+                        logger.warning("无法绘制等高线图")
+                
+                logger.info(f"已生成可视化报告在 {self.result_dir} 目录下")
+            except Exception as e:
+                logger.warning(f"生成可视化报告失败: {e}")
+            
+            # 保存所有优化结果
+            import json
+            with open(os.path.join(self.result_dir, "all_results.json"), "w") as f:
+                json.dump(
+                    [{k: (v if not isinstance(v, dict) else {kk: vv for kk, vv in v.items() if not kk.endswith('_range')}) 
+                      for k, v in result.items()} 
+                     for result in optimization_results], 
+                    f, indent=2
+                )
+            
+            logger.info(f"优化完成，共探索了{len(optimization_results)}组有效参数")
+            
+            # 直接返回Optuna找到的最佳参数和性能指标，而不是重新调用analyze_with_param
+            best_trial_result = None
+            for result in optimization_results:
+                if result["trial_number"] == best_trial.number:
+                    best_trial_result = result
+                    break
+            
+                
+            # 从优化结果中获取完整的参数信息
+            best_result = {
+                "create_index_time": best_trial.user_attrs["create_index_time"],
+                "index_size": best_trial.user_attrs["index_size"],
+                "table_size": best_trial_result.get("table_size", 0),
+                "index_type": index_type,
+                "index_param": best_trial_result['index_param'],
+                "best_query_param": best_trial_result["best_query_param"],
+                "best_performance": best_trial_result["best_performance"],
+                "user_min_recall": self.min_recall,
+                "success": bool(best_trial.user_attrs["recall"] >= self.min_recall)
+            }
+            
+            return best_result
+        else:
+            logger.warning("未能找到有效的参数组合")
+            # 如果没有找到任何有效参数，返回理论最优的结果
+            return self.analyze_with_param(theoretical_params)
 
 
     def analyze_with_param(self, param: IndexAndQueryParam):
@@ -130,7 +456,6 @@ class Analyzer:
             "index_param": index_param,
             "query_param": query_param,
             "user_min_recall": self.min_recall,
-            "user_tolerance": self.tolerance,
             "success": False
         }
 
@@ -140,7 +465,7 @@ class Analyzer:
             module.set_query_arguments(**query_param)
             # 请所有的请求请求一遍, 预热图索引
             for query_data in self.query_data:
-                module.query(query_data.vectors, self.limit)
+                module.query(query_data.vectors, self.performance.limit)
 
         # 测试查询参数
         recall, avg_query_time, min_query_time, max_query_time, qps = self.test_query_param(module, query_param)
@@ -156,14 +481,15 @@ class Analyzer:
         }
         
         # 如果当前召回率低于目标值，增加参数值
-        if recall + self.tolerance < self.min_recall:
+        if recall < self.min_recall:
             logger.info(f"参数组合的召回率 {recall:.6f} 低于最小召回率 {self.min_recall:.6f}，探索更大的参数")
             best_param, best_performance = self._increase_param_until_target(
                 module, query_param, param_info)
         
-        # 如果当前召回率高于目标值很多（接近1或超过min_recall + 0.1），减小参数值
-        elif recall > min(self.min_recall + 0.1, 0.9999):  # 使用0.1作为固定阈值，避免陷入循环
-            logger.info(f"参数组合的召回率 {recall:.6f} 远高于最小召回率 {self.min_recall:.6f}，探索更小的参数")
+        # 如果当前召回率高于目标值，减小参数值尝试接近目标值
+        # 只要高于最低要求就尝试减小参数，但设置一个缓冲区避免频繁波动
+        elif recall > self.min_recall + 0.05:  # 设置一个小缓冲区(0.05)避免参数反复波动
+            logger.info(f"参数组合的召回率 {recall:.6f} 高于最小召回率 {self.min_recall:.6f}，尝试减小参数提高效率")
             best_param, best_performance = self._decrease_param_until_target(
                 module, query_param, param_info)
             
@@ -176,11 +502,19 @@ class Analyzer:
         analyze_result.update({
             "best_query_param": best_param,
             "best_performance": best_performance,
-            "success": bool(best_performance["recall"] + self.tolerance >= self.min_recall)
+            "success": bool(best_performance["recall"] >= self.min_recall)
         })
         
-        return analyze_result
+        # 过滤掉index_param和best_query_param中的_range参数
+        filtered_index_param = {k: v for k, v in analyze_result["index_param"].items() if not k.endswith('_range')}
+        filtered_best_query_param = {k: v for k, v in analyze_result["best_query_param"].items() if not k.endswith('_range')}
         
+        # 更新过滤后的参数
+        analyze_result["index_param"] = filtered_index_param
+        analyze_result["best_query_param"] = filtered_best_query_param
+        
+        return analyze_result
+
     def _get_param_strategy(self, index_type: str, query_param: Dict[str, Any]) -> Dict[str, Any]:
         """
         根据索引类型返回关键参数信息
@@ -232,7 +566,7 @@ class Analyzer:
             result = {
                 "primary_param": {
                     "name": "diskann_search_list_size",
-                    "base_step": 5,
+                    "base_step": 20,  # 增加base_step从5到20
                     "min_value": query_param.get("diskann_search_list_size_range", [1, 2000])[0],
                     "max_value": query_param.get("diskann_search_list_size_range", [1, 2000])[1]
                 }
@@ -537,13 +871,29 @@ class Analyzer:
                 
                 logger.info(f"减小次要参数 {secondary_name} 到 {new_secondary_value}")
             else:
+                # 根据参数名称判断是否是diskann
+                is_diskann = primary_name == "diskann_search_list_size"
+                
+                # 计算召回率与目标值的差距
+                recall_margin = best_performance["recall"] - self.min_recall
+                
                 # 计算主参数的减小步长
-                primary_step = self._calculate_step(
-                    current_param[primary_name], 
-                    best_performance["recall"], 
-                    self.min_recall,
-                    primary_base_step
-                ) // 2  # 减小步长应小于增加步长
+                if is_diskann and recall_margin > 0.1:
+                    # 对于diskann且召回率远高于目标时，使用更激进的步长
+                    # 根据召回率差距动态调整步长
+                    margin_factor = min(3.0, max(1.0, recall_margin * 10))  # 差距0.1→1倍，差距0.2→2倍，差距≥0.3→3倍
+                    primary_step = int(primary_base_step * margin_factor)
+                    # 让步长与当前参数值成比例，更大的参数值可以有更大的减小步长
+                    primary_step = max(5, min(current_param[primary_name] // 4, primary_step))
+                    logger.info(f"召回率({best_performance['recall']:.6f})远高于目标({self.min_recall:.6f})，使用更大步长: {primary_step}")
+                else:
+                    # 其他索引类型或差距不大时，使用原来的逻辑
+                    primary_step = self._calculate_step(
+                        current_param[primary_name], 
+                        best_performance["recall"], 
+                        self.min_recall,
+                        primary_base_step
+                    ) // 2  # 减小步长应小于增加步长
                 
                 # 确保步长最小为1
                 primary_step = max(1, primary_step)
@@ -617,22 +967,22 @@ class Analyzer:
         
         results = []
         for query_data in self.query_data:
-            results.append(single_query(module, query_data.vectors, self.limit))
+            results.append(single_query(module, query_data.vectors, self.performance.limit))
 
         #计算召回率
-        recall = get_recall_values([query_data.distances for query_data in self.query_data], [distances for _, distances in results], self.limit)
+        recall = round(get_recall_values([query_data.distances for query_data in self.query_data], [distances for _, distances in results], self.performance.limit), 6)
         
         # 计算平均查询时间
-        avg_query_time = sum(time for time, _ in results) / len(results)
+        avg_query_time = round(sum(time for time, _ in results) / len(results), 6)
 
         # 最小查询时间
-        min_query_time = min(time for time, _ in results)
+        min_query_time = round(min(time for time, _ in results), 6)
 
         # 最大查询时间
-        max_query_time = max(time for time, _ in results)
+        max_query_time = round(max(time for time, _ in results), 6)
 
         # 计算QPS
-        qps = 1 / avg_query_time
+        qps = round(1 / avg_query_time, 4)
 
         return recall, avg_query_time, min_query_time, max_query_time, qps
 

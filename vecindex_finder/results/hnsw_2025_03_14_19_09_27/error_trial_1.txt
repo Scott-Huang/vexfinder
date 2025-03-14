@@ -1,0 +1,2 @@
+Error: HnswModule.set_query_arguments() got an unexpected keyword argument 'hnsw_ef_search'
+Index params: {'m': 61, 'ef_construction': 223, 'ef_construction_range': (40, 800), 'm_range': (8, 96)}

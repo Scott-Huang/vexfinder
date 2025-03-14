@@ -30,7 +30,7 @@ class TableInfoConfig(BaseModel):
         if v not in valid_metrics:
             raise ValueError(f"metric必须是以下之一: {', '.join(valid_metrics)}")
         return v
-        
+
     @property
     def sample_table_name(self) -> str:
         """懒加载采样表名"""
@@ -64,7 +64,11 @@ class PerformanceConfig(BaseModel):
     """性能测试配置"""
     limit: int = 100
     min_recall: float = 0.8
-    tolerance: float = 0.05
+    weight: Dict[str, float] = {
+        "create_index_time": 0.3,
+        "index_size": 0.1,
+        "qps": 0.6
+    }
 
 
 class IndexParamsConfig(BaseModel):

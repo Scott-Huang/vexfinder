@@ -60,6 +60,11 @@ class PerformanceConfig(BaseModel):
     """性能测试配置"""
     limit: int = 100
     min_recall: float = 0.9
+    weight: Dict[str, float] = {
+        "create_index_time": 0.3,
+        "index_size": 0.1,
+        "qps": 0.6
+    }
 
 
 class IvfFlatConfig(BaseModel):

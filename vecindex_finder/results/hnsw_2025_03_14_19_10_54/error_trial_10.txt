@@ -1,0 +1,3 @@
+Error: 创建索引 hnsw 时出错: ef_construction must be greater than or equal to 2 * m
+
+Index params: {'m': 57, 'ef_construction': 102, 'ef_construction_range': (40, 800), 'm_range': (8, 96)}

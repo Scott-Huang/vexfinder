@@ -1,0 +1,15 @@
+{
+  "trial_number": 2,
+  "index_param": {
+    "ivf_nlist": 139
+  },
+  "best_query_param": {
+    "ivf_probes": 20
+  },
+  "create_index_time": 1.2626936435699463,
+  "index_size": 0.00347900390625,
+  "recall": 0.9156,
+  "avg_query_time": 0.007724776268005371,
+  "qps": 129.45358743162822,
+  "score": 78.05130845243853
+}

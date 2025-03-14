@@ -36,7 +36,7 @@ def run_batch_analysis(index_type="ivfflat", query_data=None):
     # 创建配置
     config = Config()
     index_config = IndexConfig(find_index_type=index_type, auto=True, prepare_cache=True)
-    performance = PerformanceConfig(limit=100, min_recall=0.8, tolerance=0.05)
+    performance = PerformanceConfig(limit=100, min_recall=0.8, weight={"create_index_time": 0.3, "index_size": 0.1, "qps": 0.6})
     
     # 创建分析器和结果收集器
     analyzer = Analyzer(index_config, db_engine, query_data, performance)

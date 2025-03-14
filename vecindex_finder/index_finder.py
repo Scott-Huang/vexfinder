@@ -4,6 +4,7 @@
 import os
 import sys
 import argparse
+import json
 from core.config import config
 from core.engine import db_engine
 from core.analyzer import Analyzer
@@ -89,7 +90,7 @@ def main():
         # 查找最佳索引参数
         logger.info("开始查找最佳索引参数")
         best_result = analyzer.analyze()
-        logger.info(f"找到最佳索引参数: {best_result}")
+        logger.info(f"找到最佳索引参数: {json.dumps(best_result, indent=4)}")
 
         
     except Exception as e:

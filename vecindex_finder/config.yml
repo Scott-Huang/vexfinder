@@ -22,7 +22,7 @@ table_info:
 # 采样配置
 sampling:
   # 默认采样比例，如果表中数据量小于min_sample_count，则采样min_sample_count条数据，如果表中数据量大于max_sample_count，则采样max_sample_count条数据
-  default_ratio: 0.1
+  default_ratio: 0.01
   # 最小采样数量
   min_sample_count: 10000
   # 最大采样数量
@@ -33,7 +33,7 @@ query:
   # query获取方式, sample/从原表中采样, json/从json文件中获取
   query_get_type: "sample"
   # 测试的请求，默认1000，query_get_type为sample时有效
-  query_count: 1000
+  query_count: 100
   # query_data_path, query数据用json数组的方式存储，如[[1, 2, 3], [4, 5, 6], ...], 如果为空，则使用默认的采样方式
   query_data_path: "query_data.json"
   
@@ -43,9 +43,12 @@ performance:
   # limit, 每次查询的限制数量
   limit: 100
   # 最低容忍召回率
-  min_recall: 0.9
-  # 波动容忍度，如果召回率波动超过该值，则认为该参数无效
-  tolerance: 0.005
+  min_recall: 0.99
+  # 参数评价权重（相加为1），满足最低召回率的前提下，考虑的优先级，查找最佳参数时，会依据权重计算得分。
+  weight:
+    create_index_time: 0.3
+    index_size: 0.1
+    qps: 0.6
 
 
 # 并行工作线程数，，最小为1, 如果为null，则使用默认值为75%的CPU核心数
@@ -57,7 +60,7 @@ explore_factor: 0.3
 # 索引类型配置
 index_config:
   # 需要查找的索引类型, ivfflat/ivfpq/hnsw/diskann, 只需要指定一个。
-  find_index_type: "ivfflat"
+  find_index_type: "hnsw"
   # 是否预热缓存，如果为true，则程序会先预热缓存，建议图索引（hnsw/diskann）设置为true，其他索引设置为false。
   prepare_cache: false
   # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数。如果为false，需要设置index_params。

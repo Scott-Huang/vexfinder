@@ -86,107 +86,36 @@ class IndexParamBuilder:
             # 大数据集，使用略大的nlist以提高性能
             elif sample_count > 1000000:
                 base_nlist = max(1000, int(base_nlist * 1.2))
-            
-            # 根据维度选择最优的m值
-            if dimension < 64:
-                # 低维向量，使用较小的m值
-                m_value = 8
-            else:
-                # 高维向量，根据维度调整m值
-                m_value = min(dimension // 8, 32)  # 推荐维度的1/8但不超过32
-            
-            # 尝试找到维度的因子作为m值
-            if dimension % m_value != 0:
-                candidate_m_values = []
-                for m in [8, 16, 24, 32]:
-                    if dimension % m == 0 and m < dimension:
-                        candidate_m_values.append(m)
-                
-                if candidate_m_values:
-                    # 选择最接近推荐值的因子
-                    m_value = min(candidate_m_values, key=lambda x: abs(x - m_value))
-            
-            # 根据数据量调整nprobe值
-            nprobe_ratio = 0.05  # 默认为5%
-            if sample_count < 10000:
-                nprobe_ratio = 0.1  # 小数据集使用更大的比例
-            elif sample_count > 1000000:
-                nprobe_ratio = 0.03  # 大数据集使用更小的比例
-            
-            nprobe_value = max(1, int(base_nlist * nprobe_ratio))
-            
-            # 根据维度调整refine_factor
-            refine_factor = 1
-            if dimension > 128:
-                # 高维向量可能需要更高的refine_factor以提高精度
-                refine_factor = 2
-            
+        
             return IndexAndQueryParam(
                 index_type='ivfpq',
                 index_param={
                     'ivf_nlist': base_nlist,
                     'ivf_nlist_range': [1, 10000],
-                    'num_subquantizers': m_value,
+                    'num_subquantizers': 8,
                     'num_subquantizers_range': [1, 10000],
                 },
                 query_param={
-                    'ivf_probes': nprobe_value,
+                    'ivf_probes': 100,
                     'ivf_probes_range': [1, 10000],
-                    'ivfpq_refine_k_factor': refine_factor,
+                    'ivfpq_refine_k_factor': 2,
                     'ivfpq_refine_k_factor_range': [1, 64]
                 }
             )
         
         # HNSW理论参数
-        elif index_type == 'hnsw':
-            # 根据维度选择基础M值
-            if dimension <= 64:
-                base_M = 16  # 低维度
-            elif dimension <= 256:
-                base_M = 24  # 中等维度
-            else:
-                base_M = 32  # 高维度
-            
-            # 根据数据量微调M值
-            if sample_count < 10000:
-                # 小数据集可以适当增加M值
-                base_M = min(48, base_M + 4)
-            elif sample_count > 1000000:
-                # 大数据集可能需要减小M值以提高构建速度
-                base_M = max(12, base_M - 4)
-            
-            # efConstruction通常是M的倍数，影响构建质量
-            # 根据数据量调整
-            if sample_count < 10000:
-                ef_construction_factor = 4  # 小数据集
-            elif sample_count < 100000:
-                ef_construction_factor = 6  # 中等数据集
-            else:
-                ef_construction_factor = 8  # 大数据集
-            
-            efConstruction = base_M * ef_construction_factor
-            
-            # 查询ef通常是efConstruction的1.5-3倍
-            # 根据数据量和维度调整
-            ef_ratio = 2.0  # 默认值
-            if dimension > 128 and sample_count > 100000:
-                # 高维大数据集可能需要更高的ef比例
-                ef_ratio = 2.5
-            elif dimension <= 64 and sample_count < 10000:
-                # 低维小数据集可能需要较低的ef比例
-                ef_ratio = 1.5
-            
+        elif index_type == 'hnsw':            
             return IndexAndQueryParam(
                 index_type='hnsw',
                 index_param={
-                    'm': base_M,
-                    'm_range': [2, 64],
-                    'ef_construction': efConstruction,
-                    'ef_construction_range': [4, 1000]
+                    'm': 16,
+                    'm_range': [8, 64],
+                    'ef_construction': 200,
+                    'ef_construction_range': [100, 800]
                 },
                 query_param={
-                    'hnsw_ef_search': int(efConstruction * ef_ratio),
-                    'hnsw_ef_search_range': [1, 2000]
+                    'hnsw_ef_search': 100,
+                    'hnsw_ef_search_range': [100, 2000]
                 }
             )
         

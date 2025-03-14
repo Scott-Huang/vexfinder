@@ -1,0 +1,542 @@
+[
+  {
+    "trial_number": 0,
+    "index_param": {
+      "m": 16,
+      "ef_construction": 200
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 212
+    },
+    "create_index_time": 1.018714189529419,
+    "index_size": 6280.0,
+    "score": 4.719213164329529,
+    "best_performance": {
+      "recall": 0.9913,
+      "avg_query_time": 0.007355,
+      "min_query_time": 0.004344,
+      "max_query_time": 0.01114,
+      "qps": 135.9619
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 1.018714189529419,
+      "index_size_mb": 0.00598907470703125,
+      "query_time_ms": 7.355,
+      "avg_query_time_s": 0.007355,
+      "qps": 135.9619,
+      "weighted_create_index_time": 0.30561425685882565,
+      "weighted_index_size": 0.000598907470703125,
+      "weighted_query_time": 4.413
+    }
+  },
+  {
+    "trial_number": 1,
+    "index_param": {
+      "m": 46,
+      "ef_construction": 730
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 7.325296878814697,
+    "index_size": 16368.0,
+    "score": 7.810950037765503,
+    "best_performance": {
+      "recall": 0.9989,
+      "avg_query_time": 0.009353,
+      "min_query_time": 0.006251,
+      "max_query_time": 0.013157,
+      "qps": 106.9176
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 7.325296878814697,
+      "index_size_mb": 0.0156097412109375,
+      "query_time_ms": 9.353,
+      "avg_query_time_s": 0.009353,
+      "qps": 106.9176,
+      "weighted_create_index_time": 2.197589063644409,
+      "weighted_index_size": 0.0015609741210937502,
+      "weighted_query_time": 5.6118
+    }
+  },
+  {
+    "trial_number": 2,
+    "index_param": {
+      "m": 27,
+      "ef_construction": 566
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 199
+    },
+    "create_index_time": 4.053513050079346,
+    "index_size": 10064.0,
+    "score": 7.038213692855835,
+    "best_performance": {
+      "recall": 0.9922,
+      "avg_query_time": 0.009702,
+      "min_query_time": 0.006776,
+      "max_query_time": 0.013755,
+      "qps": 103.0715
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 4.053513050079346,
+      "index_size_mb": 0.0095977783203125,
+      "query_time_ms": 9.702,
+      "avg_query_time_s": 0.009702,
+      "qps": 103.0715,
+      "weighted_create_index_time": 1.2160539150238037,
+      "weighted_index_size": 0.0009597778320312501,
+      "weighted_query_time": 5.8212
+    }
+  },
+  {
+    "trial_number": 3,
+    "index_param": {
+      "m": 40,
+      "ef_construction": 202
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 2.853557825088501,
+    "index_size": 16016.0,
+    "score": 5.291594752311706,
+    "best_performance": {
+      "recall": 0.999,
+      "avg_query_time": 0.00739,
+      "min_query_time": 0.003559,
+      "max_query_time": 0.011646,
+      "qps": 135.318
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 2.853557825088501,
+      "index_size_mb": 0.0152740478515625,
+      "query_time_ms": 7.39,
+      "avg_query_time_s": 0.00739,
+      "qps": 135.318,
+      "weighted_create_index_time": 0.8560673475265502,
+      "weighted_index_size": 0.0015274047851562501,
+      "weighted_query_time": 4.433999999999999
+    }
+  },
+  {
+    "trial_number": 5,
+    "index_param": {
+      "m": 12,
+      "ef_construction": 381
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 1780
+    },
+    "create_index_time": 1.818030834197998,
+    "index_size": 4880.0,
+    "score": 16.890474643325806,
+    "best_performance": {
+      "recall": 0.9904,
+      "avg_query_time": 0.027241,
+      "min_query_time": 0.023148,
+      "max_query_time": 0.032316,
+      "qps": 36.7094
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 1.818030834197998,
+      "index_size_mb": 0.0046539306640625,
+      "query_time_ms": 27.241,
+      "avg_query_time_s": 0.027241,
+      "qps": 36.7094,
+      "weighted_create_index_time": 0.5454092502593993,
+      "weighted_index_size": 0.00046539306640625,
+      "weighted_query_time": 16.3446
+    }
+  },
+  {
+    "trial_number": 6,
+    "index_param": {
+      "m": 46,
+      "ef_construction": 790
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 7.672303199768066,
+    "index_size": 16440.0,
+    "score": 8.19045880050659,
+    "best_performance": {
+      "recall": 0.9985,
+      "avg_query_time": 0.009812,
+      "min_query_time": 0.006532,
+      "max_query_time": 0.014352,
+      "qps": 101.916
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 7.672303199768066,
+      "index_size_mb": 0.01567840576171875,
+      "query_time_ms": 9.812,
+      "avg_query_time_s": 0.009812,
+      "qps": 101.916,
+      "weighted_create_index_time": 2.30169095993042,
+      "weighted_index_size": 0.001567840576171875,
+      "weighted_query_time": 5.887199999999999
+    }
+  },
+  {
+    "trial_number": 7,
+    "index_param": {
+      "m": 28,
+      "ef_construction": 752
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 248
+    },
+    "create_index_time": 4.795706748962402,
+    "index_size": 10360.0,
+    "score": 8.613300031280517,
+    "best_performance": {
+      "recall": 0.9909,
+      "avg_query_time": 0.011956,
+      "min_query_time": 0.008904,
+      "max_query_time": 0.015296,
+      "qps": 83.64
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 4.795706748962402,
+      "index_size_mb": 0.00988006591796875,
+      "query_time_ms": 11.956,
+      "avg_query_time_s": 0.011956,
+      "qps": 83.64,
+      "weighted_create_index_time": 1.4387120246887206,
+      "weighted_index_size": 0.000988006591796875,
+      "weighted_query_time": 7.1735999999999995
+    }
+  },
+  {
+    "trial_number": 8,
+    "index_param": {
+      "m": 33,
+      "ef_construction": 246
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 2.6355464458465576,
+    "index_size": 11800.0,
+    "score": 4.950389269447326,
+    "best_performance": {
+      "recall": 0.9991,
+      "avg_query_time": 0.006931,
+      "min_query_time": 0.003683,
+      "max_query_time": 0.010761,
+      "qps": 144.2793
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 2.6355464458465576,
+      "index_size_mb": 0.01125335693359375,
+      "query_time_ms": 6.931,
+      "avg_query_time_s": 0.006931,
+      "qps": 144.2793,
+      "weighted_create_index_time": 0.7906639337539673,
+      "weighted_index_size": 0.001125335693359375,
+      "weighted_query_time": 4.1586
+    }
+  },
+  {
+    "trial_number": 9,
+    "index_param": {
+      "m": 61,
+      "ef_construction": 533
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 7.823064565658569,
+    "index_size": 20448.0,
+    "score": 8.786269442939759,
+    "best_performance": {
+      "recall": 0.9996,
+      "avg_query_time": 0.010729,
+      "min_query_time": 0.006679,
+      "max_query_time": 0.015804,
+      "qps": 93.2053
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 7.823064565658569,
+      "index_size_mb": 0.019500732421875,
+      "query_time_ms": 10.729000000000001,
+      "avg_query_time_s": 0.010729,
+      "qps": 93.2053,
+      "weighted_create_index_time": 2.3469193696975705,
+      "weighted_index_size": 0.0019500732421875002,
+      "weighted_query_time": 6.4374
+    }
+  },
+  {
+    "trial_number": 10,
+    "index_param": {
+      "m": 21,
+      "ef_construction": 100
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 0.8274533748626709,
+    "index_size": 8088.0,
+    "score": 3.43500734424591,
+    "best_performance": {
+      "recall": 0.9956,
+      "avg_query_time": 0.00531,
+      "min_query_time": 0.002859,
+      "max_query_time": 0.008671,
+      "qps": 188.3239
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 0.8274533748626709,
+      "index_size_mb": 0.00771331787109375,
+      "query_time_ms": 5.31,
+      "avg_query_time_s": 0.00531,
+      "qps": 188.3239,
+      "weighted_create_index_time": 0.24823601245880125,
+      "weighted_index_size": 0.0007713317871093751,
+      "weighted_query_time": 3.1859999999999995
+    }
+  },
+  {
+    "trial_number": 11,
+    "index_param": {
+      "m": 18,
+      "ef_construction": 111
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 0.764087438583374,
+    "index_size": 6976.0,
+    "score": 3.3348915147781373,
+    "best_performance": {
+      "recall": 0.9937,
+      "avg_query_time": 0.005175,
+      "min_query_time": 0.002888,
+      "max_query_time": 0.008253,
+      "qps": 193.2367
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 0.764087438583374,
+      "index_size_mb": 0.00665283203125,
+      "query_time_ms": 5.175,
+      "avg_query_time_s": 0.005175,
+      "qps": 193.2367,
+      "weighted_create_index_time": 0.2292262315750122,
+      "weighted_index_size": 0.000665283203125,
+      "weighted_query_time": 3.105
+    }
+  },
+  {
+    "trial_number": 12,
+    "index_param": {
+      "m": 21,
+      "ef_construction": 100
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 0.8268885612487793,
+    "index_size": 8096.0,
+    "score": 3.451638663101196,
+    "best_performance": {
+      "recall": 0.996,
+      "avg_query_time": 0.005338,
+      "min_query_time": 0.002825,
+      "max_query_time": 0.008532,
+      "qps": 187.3361
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 0.8268885612487793,
+      "index_size_mb": 0.007720947265625,
+      "query_time_ms": 5.338,
+      "avg_query_time_s": 0.005338,
+      "qps": 187.3361,
+      "weighted_create_index_time": 0.24806656837463378,
+      "weighted_index_size": 0.0007720947265625,
+      "weighted_query_time": 3.2028
+    }
+  },
+  {
+    "trial_number": 13,
+    "index_param": {
+      "m": 23,
+      "ef_construction": 102
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 0.9284169673919678,
+    "index_size": 8920.0,
+    "score": 3.6273757677078247,
+    "best_performance": {
+      "recall": 0.9969,
+      "avg_query_time": 0.00558,
+      "min_query_time": 0.002884,
+      "max_query_time": 0.009218,
+      "qps": 179.2115
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 0.9284169673919678,
+      "index_size_mb": 0.00850677490234375,
+      "query_time_ms": 5.58,
+      "avg_query_time_s": 0.00558,
+      "qps": 179.2115,
+      "weighted_create_index_time": 0.2785250902175903,
+      "weighted_index_size": 0.000850677490234375,
+      "weighted_query_time": 3.348
+    }
+  },
+  {
+    "trial_number": 14,
+    "index_param": {
+      "m": 16,
+      "ef_construction": 353
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 521
+    },
+    "create_index_time": 1.8968658447265625,
+    "index_size": 6280.0,
+    "score": 9.463458660888671,
+    "best_performance": {
+      "recall": 0.9908,
+      "avg_query_time": 0.014823,
+      "min_query_time": 0.010146,
+      "max_query_time": 0.020859,
+      "qps": 67.4627
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 1.8968658447265625,
+      "index_size_mb": 0.00598907470703125,
+      "query_time_ms": 14.822999999999999,
+      "avg_query_time_s": 0.014823,
+      "qps": 67.4627,
+      "weighted_create_index_time": 0.5690597534179688,
+      "weighted_index_size": 0.000598907470703125,
+      "weighted_query_time": 8.893799999999999
+    }
+  },
+  {
+    "trial_number": 15,
+    "index_param": {
+      "m": 34,
+      "ef_construction": 292
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 2.8519630432128906,
+    "index_size": 13352.0,
+    "score": 5.469662258911133,
+    "best_performance": {
+      "recall": 0.9989,
+      "avg_query_time": 0.007688,
+      "min_query_time": 0.004212,
+      "max_query_time": 0.0116,
+      "qps": 130.0728
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 2.8519630432128906,
+      "index_size_mb": 0.01273345947265625,
+      "query_time_ms": 7.688000000000001,
+      "avg_query_time_s": 0.007688,
+      "qps": 130.0728,
+      "weighted_create_index_time": 0.8555889129638672,
+      "weighted_index_size": 0.001273345947265625,
+      "weighted_query_time": 4.6128
+    }
+  },
+  {
+    "trial_number": 16,
+    "index_param": {
+      "m": 19,
+      "ef_construction": 158
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 0.9981253147125244,
+    "index_size": 7384.0,
+    "score": 3.6517417875289913,
+    "best_performance": {
+      "recall": 0.9957,
+      "avg_query_time": 0.005586,
+      "min_query_time": 0.003287,
+      "max_query_time": 0.009067,
+      "qps": 179.019
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 0.9981253147125244,
+      "index_size_mb": 0.00704193115234375,
+      "query_time_ms": 5.585999999999999,
+      "avg_query_time_s": 0.005586,
+      "qps": 179.019,
+      "weighted_create_index_time": 0.29943759441375734,
+      "weighted_index_size": 0.0007041931152343751,
+      "weighted_query_time": 3.3515999999999995
+    }
+  },
+  {
+    "trial_number": 18,
+    "index_param": {
+      "m": 61,
+      "ef_construction": 296
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 5.543138742446899,
+    "index_size": 20416.0,
+    "score": 7.660688644218445,
+    "best_performance": {
+      "recall": 0.9998,
+      "avg_query_time": 0.009993,
+      "min_query_time": 0.005238,
+      "max_query_time": 0.014983,
+      "qps": 100.07
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 5.543138742446899,
+      "index_size_mb": 0.01947021484375,
+      "query_time_ms": 9.993,
+      "avg_query_time_s": 0.009993,
+      "qps": 100.07,
+      "weighted_create_index_time": 1.6629416227340699,
+      "weighted_index_size": 0.0019470214843750001,
+      "weighted_query_time": 5.9958
+    }
+  },
+  {
+    "trial_number": 19,
+    "index_param": {
+      "m": 26,
+      "ef_construction": 162
+    },
+    "best_query_param": {
+      "hnsw_ef_search": 100
+    },
+    "create_index_time": 1.6627836227416992,
+    "index_size": 10016.0,
+    "score": 4.261790287017822,
+    "best_performance": {
+      "recall": 0.998,
+      "avg_query_time": 0.00627,
+      "min_query_time": 0.003455,
+      "max_query_time": 0.009814,
+      "qps": 159.4896
+    },
+    "normalized_metrics": {
+      "create_index_time_s": 1.6627836227416992,
+      "index_size_mb": 0.009552001953125,
+      "query_time_ms": 6.2700000000000005,
+      "avg_query_time_s": 0.00627,
+      "qps": 159.4896,
+      "weighted_create_index_time": 0.49883508682250977,
+      "weighted_index_size": 0.0009552001953125,
+      "weighted_query_time": 3.762
+    }
+  }
+]

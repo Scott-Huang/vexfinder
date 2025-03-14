@@ -24,7 +24,7 @@ from core.types import IndexAndQueryParam
 # 创建配置
 config = Config()
 index_config = IndexConfig(find_index_type="ivfflat", auto=True)
-performance = PerformanceConfig(limit=100, min_recall=0.8, tolerance=0.05)
+performance = PerformanceConfig(limit=100, min_recall=0.8)
 
 # 创建分析器和结果收集器
 analyzer = Analyzer(index_config, db_engine, query_data, performance)

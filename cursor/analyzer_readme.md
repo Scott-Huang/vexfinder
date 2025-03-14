@@ -47,7 +47,7 @@ from core.types import IndexAndQueryParam
 
 # 创建配置
 index_config = IndexConfig(find_index_type="hnsw", auto=True, prepare_cache=True)
-performance = PerformanceConfig(limit=100, min_recall=0.8, tolerance=0.05)
+performance = PerformanceConfig(limit=100, min_recall=0.8)
 
 # 创建分析器
 analyzer = Analyzer(index_config, db_engine, query_data, performance)
@@ -66,7 +66,6 @@ best_param, best_performance = analyzer.analyze(param)
 ## 配置说明
 
 - **min_recall**: 目标召回率，分析器会尝试找到达到此召回率的最小参数值
-- **tolerance**: 召回率容忍值，表示可接受的误差范围
 - **limit**: 查询时返回的最大结果数
 
 ## 结果解释

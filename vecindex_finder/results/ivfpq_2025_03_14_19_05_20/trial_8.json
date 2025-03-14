@@ -1,0 +1,27 @@
+{
+  "trial_number": 8,
+  "index_param": {
+    "ivf_nlist": 159,
+    "num_subquantizers": 4
+  },
+  "best_query_param": {
+    "ivf_probes": 343,
+    "ivfpq_refine_k_factor": 3
+  },
+  "create_index_time": 3.829725980758667,
+  "index_size": 0.001434326171875,
+  "recall": 0.9052999999999999,
+  "avg_query_time": 0.0055412912368774415,
+  "qps": 180.46335362143992,
+  "score": 4.473835968971253,
+  "normalized_metrics": {
+    "create_index_time_s": 3.829725980758667,
+    "index_size_mb": 0.001434326171875,
+    "query_time_ms": 5.541291236877441,
+    "avg_query_time_s": 0.0055412912368774415,
+    "qps": 180.46335362143992,
+    "weighted_create_index_time": 1.1489177942276,
+    "weighted_index_size": 0.0001434326171875,
+    "weighted_query_time": 3.324774742126465
+  }
+}

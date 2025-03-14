@@ -83,9 +83,13 @@ class IvfflatModule(BaseModule):
             raise RuntimeError(f"unknown metric {self._metric}")
         print("done!")
 
-    def set_query_arguments(self, ivf_probes):
-        self._n_probe = ivf_probes
-        self._cur.execute("SET enable_seqscan TO off; set ivf_probes = %d" % ivf_probes)
+    def set_query_arguments(self, **kwargs):
+        # 通过关键字参数接收ivf_probes
+        if 'ivf_probes' in kwargs:
+            self._n_probe = kwargs['ivf_probes']
+            self._cur.execute("SET enable_seqscan TO off; set ivf_probes = %d" % self._n_probe)
+        else:
+            raise ValueError("缺少必要的参数'ivf_probes'")
 
     def __str__(self):
         return "ivfflat-index(n_list=%d, n_probe=%d)" % (self._n_list, self._n_probe)
@@ -120,11 +124,20 @@ class IvfpqModule(BaseModule):
             raise RuntimeError(f"unknown metric {self._metric}")
         print("done!")
 
-    def set_query_arguments(self, ivf_probes, ivfpq_refine_k_factor):
-        self._n_probe = ivf_probes
-        self._n_factor = ivfpq_refine_k_factor
-        self._cur.execute(
-            f"SET enable_seqscan TO off; set ivf_probes = {ivf_probes}; set ivfpq_refine_k_factor={ivfpq_refine_k_factor};")
+    def set_query_arguments(self, **kwargs):
+        # 通过关键字参数接收ivf_probes和ivfpq_refine_k_factor
+        if 'ivf_probes' in kwargs and 'ivfpq_refine_k_factor' in kwargs:
+            self._n_probe = kwargs['ivf_probes']
+            self._n_factor = kwargs['ivfpq_refine_k_factor']
+            self._cur.execute(
+                f"SET enable_seqscan TO off; set ivf_probes = {self._n_probe}; set ivfpq_refine_k_factor={self._n_factor};")
+        else:
+            missing_params = []
+            if 'ivf_probes' not in kwargs:
+                missing_params.append('ivf_probes')
+            if 'ivfpq_refine_k_factor' not in kwargs:
+                missing_params.append('ivfpq_refine_k_factor')
+            raise ValueError(f"缺少必要的参数: {', '.join(missing_params)}")
 
     def __str__(self):
         return "ivfpq-index(n_list=%d, n_probe=%d, ivfpq_refine_k_factor=%d, num_subquantizers=%d, nbits=%d)" % (self._n_list, self._n_probe, self._n_factor, self._m, self._nbits)
@@ -157,10 +170,14 @@ class HnswModule(BaseModule):
             raise RuntimeError(f"unknown metric {self._metric}")
         print("done!")
 
-    def set_query_arguments(self, ef_search):
-        self._ef_search = ef_search
-        self._cur.execute(
-            "SET enable_seqscan TO off; set hnsw_ef_search = %d" % ef_search)
+    def set_query_arguments(self, **kwargs):
+        # 通过关键字参数接收hnsw_ef_search
+        if 'hnsw_ef_search' in kwargs:
+            self._ef_search = kwargs['hnsw_ef_search']
+            self._cur.execute(
+                "SET enable_seqscan TO off; set hnsw_ef_search = %d" % self._ef_search)
+        else:
+            raise ValueError("缺少必要的参数'hnsw_ef_search'")
 
     def __str__(self):
         return f"hnsw-index(m={self._m}, ef_construction={self._ef_construction}, hnsw_ef_search={self._ef_search})"
@@ -169,7 +186,8 @@ class HnswModule(BaseModule):
 class DiskannModule(BaseModule):
     def __init__(self, table_name, vector_column_name, metric, parallel_workers=8, db_engine_obj: Optional[DatabaseEngine] = None):
         super().__init__(table_name, vector_column_name, metric, parallel_workers, db_engine_obj)
-
+        self._ef_search = None
+        
     def create_index(self):
         self._cur.execute(f"DROP INDEX IF EXISTS {self.tablename}_{self.vector_column_name}_idx;")
         print("creating index...")
@@ -185,10 +203,14 @@ class DiskannModule(BaseModule):
         else:
             raise RuntimeError(f"unknown metric {self._metric}")
 
-    def set_query_arguments(self, ef_search):
-        self._ef_search = ef_search
-        self._cur.execute(
-            "SET enable_seqscan TO off; set diskann_search_list_size = %d; set diskann_query_with_pq = off;" % ef_search)
+    def set_query_arguments(self, **kwargs):
+        # 通过关键字参数接收diskann_search_list_size
+        if 'diskann_search_list_size' in kwargs:
+            self._ef_search = kwargs['diskann_search_list_size']
+            self._cur.execute(
+                "SET enable_seqscan TO off; set diskann_search_list_size = %d; set diskann_query_with_pq = off;" % self._ef_search)
+        else:
+            raise ValueError("缺少必要的参数'diskann_search_list_size'")
 
     def __str__(self):
         return f"diskann-index(diskann_search_list_size={self._ef_search})"

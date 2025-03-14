@@ -1,0 +1,25 @@
+{
+  "trial_number": 19,
+  "index_param": {
+    "ivf_nlist": 231
+  },
+  "best_query_param": {
+    "ivf_probes": 30
+  },
+  "create_index_time": 1.3919079303741455,
+  "index_size": 0.0038909912109375,
+  "recall": 0.9155,
+  "avg_query_time": 0.007222774028778076,
+  "qps": 138.45096025649534,
+  "score": 4.751625895500183,
+  "normalized_metrics": {
+    "create_index_time_s": 1.3919079303741455,
+    "index_size_mb": 0.0038909912109375,
+    "query_time_ms": 7.222774028778076,
+    "avg_query_time_s": 0.007222774028778076,
+    "qps": 138.45096025649534,
+    "weighted_create_index_time": 0.41757237911224365,
+    "weighted_index_size": 0.00038909912109375,
+    "weighted_query_time": 4.333664417266846
+  }
+}
