@@ -43,46 +43,71 @@ performance:
   # limit, 每次查询的限制数量
   limit: 100
   # 最低容忍召回率
-  min_recall: 0.8
-  # 最高容忍召回率
-  max_recall: 0.999
+  min_recall: 0.9
+  # 波动容忍度，如果召回率波动超过该值，则认为该参数无效
+  tolerance: 0.005
+
 
 # 并行工作线程数，，最小为1, 如果为null，则使用默认值为75%的CPU核心数
 parallel_workers: null
 
-# 索引类型配置
-index:
-  # 需要查找的索引类型
-  find_index_type: "ivfflat"
-  # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数
-  auto: true
-  # IVF-FLAT索引参数
-  ivfflat:
-    # 聚类中心数量
-    nlist: [16, 32, 64, 128, 256, 512, 1024]
-    # 查询参数
-    nprobe: [1, 4, 8, 16, 32, 64, 128]
+# 搜索参数时的探索度数，越大表示探索的参数跨度越大，越小表示探索的参数跨度越小。默认值为0.3。取值为0-1。 0表示只测试理论参数，1表示探索更多参数。
+explore_factor: 0.3
 
-  # IVF-PQ索引参数
-  ivfpq:
-    # 聚类中心数量
-    nlist: [16, 32, 64, 128, 256, 512, 1024]
-    # 子量化器数量
-    m: [4, 8, 16, 32]
-    # 每个子量化器的bit数
-    nbits: 8
-    # 查询参数
-    nprobe: [1, 4, 8, 16, 32, 64]
-    # 精炼因子范围
-    ivfpq_refine_k_factor: [1, 2, 4, 8]
-  
-  # HNSW索引参数
-  hnsw:
-    # 每个节点的最大连接数
-    M: [8, 16, 32, 64]
-    # 构建时的候选邻居数量
-    efConstruction: [40, 80, 120, 200, 400]
-    # 查询时的候选邻居数量
-    ef: [10, 20, 40, 80, 100, 200, 400, 800]
+# 索引类型配置
+index_config:
+  # 需要查找的索引类型, ivfflat/ivfpq/hnsw/diskann, 只需要指定一个。
+  find_index_type: "ivfflat"
+  # 是否预热缓存，如果为true，则程序会先预热缓存，建议图索引（hnsw/diskann）设置为true，其他索引设置为false。
+  prepare_cache: false
+  # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数。如果为false，需要设置index_params。
+  auto: true
+
+# 索引参数配置, 如果auto为false，则会探测下方手动给出的参数，从中选择最佳参数。
+index_params:
+  # 索引参数列表
+  index_args:
+    - ivf_nlist: 1024
+  # 查询参数列表
+  query_args:
+    - ivf_probes: 30
+
+# 以下是各类索引参数示例，根据需要配置
+# ivfflat参数示例
+# index_args:
+#   - ivf_nlist: 1024
+# query_args:
+#   - ivf_probes: 30
+# 
+# ivfpq参数示例
+# index_args:
+#   - ivf_nlist: 1024
+#     num_subquantizers: 8
+#     nbits: 16
+#   - ivf_nlist: 2048
+#     num_subquantizers: 8
+#     nbits: 16
+# query_args:
+#   - ivf_probes: 30
+#     ivfpq_refine_k_factor: 4
+#   - ivf_probes: 60
+#     ivfpq_refine_k_factor: 4
+# 
+# hnsw参数示例
+# index_args:
+#   - m: 16
+#     ef_construction: 100
+#   - m: 24
+#     ef_construction: 200
+# query_args:
+#   - hnsw_ef_search: 80
+#   - hnsw_ef_search: 200
+# 
+# diskann参数示例
+# index_args:
+# query_args:
+#   - diskann_search_list_size: 100
+#   - diskann_search_list_size: 200
+
 
 

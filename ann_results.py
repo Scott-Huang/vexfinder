@@ -2,8 +2,9 @@ import json
 import os
 import re
 import traceback
-from typing import Any, Optional, Set, Tuple, Iterator
+from typing import Any, Optional, Set, Tuple, Iterator, Dict
 import h5py
+import datetime
 
 from definitions import Definition
 
@@ -107,3 +108,32 @@ def get_unique_algorithms() -> Set[str]:
     for properties, _ in load_all_results():
         algorithms.add(properties["algo"])
     return algorithms
+
+
+def store_analysis_results(result_data: Dict[str, Any]):
+    """
+    存储索引分析结果到JSON文件
+    
+    Args:
+        result_data (Dict[str, Any]): 包含分析结果的字典
+    """
+    # 创建存储目录
+    result_dir = os.path.join("cursor", "analysis_results")
+    if not os.path.isdir(result_dir):
+        os.makedirs(result_dir)
+    
+    # 生成文件名，包含索引类型和时间戳
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    index_type = result_data.get("index_type", "unknown")
+    filename = f"{index_type}_analysis_{timestamp}.json"
+    filepath = os.path.join(result_dir, filename)
+    
+    # 添加时间戳到结果中
+    result_data["timestamp"] = timestamp
+    
+    # 写入JSON文件
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(result_data, f, indent=2, ensure_ascii=False)
+    
+    print(f"分析结果已保存到: {filepath}")
+    return filepath

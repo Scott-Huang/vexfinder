@@ -1,0 +1,22 @@
+{
+  "create_index_time": 7.57380223274231,
+  "index_size": 31744.0,
+  "table_size": 57144.0,
+  "index_type": "ivfflat",
+  "index_param": {
+    "ivf_nlist": 316
+  },
+  "query_param": {
+    "ivf_probes": 15
+  },
+  "best_query_param": {
+    "ivf_probes": 15
+  },
+  "best_performance": {
+    "recall": 0.87571,
+    "avg_query_time": 0.021149414539337157,
+    "min_query_time": 0.01441049575805664,
+    "max_query_time": 0.035832881927490234,
+    "qps": 47.28263272442061
+  }
+}

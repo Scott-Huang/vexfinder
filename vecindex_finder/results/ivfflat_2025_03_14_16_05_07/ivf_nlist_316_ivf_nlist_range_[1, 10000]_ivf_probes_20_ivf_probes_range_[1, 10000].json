@@ -1,0 +1,37 @@
+{
+  "create_index_time": 7.677343130111694,
+  "index_size": 31800.0,
+  "table_size": 57144.0,
+  "index_type": "ivfflat",
+  "index_param": {
+    "ivf_nlist": 316,
+    "ivf_nlist_range": [
+      1,
+      10000
+    ]
+  },
+  "query_param": {
+    "ivf_probes": 15,
+    "ivf_probes_range": [
+      1,
+      10000
+    ]
+  },
+  "user_min_recall": 0.9,
+  "user_tolerance": 0.005,
+  "success": true,
+  "best_query_param": {
+    "ivf_probes": 20,
+    "ivf_probes_range": [
+      1,
+      10000
+    ]
+  },
+  "best_performance": {
+    "recall": 0.9168700000000001,
+    "avg_query_time": 0.02809015488624573,
+    "min_query_time": 0.019675493240356445,
+    "max_query_time": 0.0545811653137207,
+    "qps": 35.59966130658992
+  }
+}

@@ -1,18 +1,20 @@
 import psycopg2
-from core.config import Config
+from core.config import Config, config
 from core.logging import logger
+from typing import Optional
 
 class DatabaseEngine:
     """数据库引擎，负责管理数据库连接"""
     
-    def __init__(self, config: Config):
+    def __init__(self, config_obj: Optional[Config] = None):
         """
         初始化数据库引擎
         
         Args:
             config_path: 配置文件路径，如果为None则使用默认路径
         """
-        self.config = config.connection_config
+
+        self.config = config_obj or config
     
     def get_connection(self):
         """
@@ -27,11 +29,11 @@ class DatabaseEngine:
         """
         try:
             conn = psycopg2.connect(
-                host=self.config['host'],
-                port=self.config['port'],
-                user=self.config['user'],
-                password=self.config['password'],
-                dbname=self.config['dbname']
+                host=self.config.connection.host,
+                port=self.config.connection.port,
+                user=self.config.connection.user,
+                password=self.config.connection.password,
+                dbname=self.config.connection.dbname
             )
             conn.autocommit = True
             return conn
@@ -60,3 +62,6 @@ class DatabaseEngine:
                 logger.debug("数据库连接已关闭")
             except Exception as e:
                 logger.warning(f"关闭连接失败: {e}")
+
+
+db_engine = DatabaseEngine(config)
