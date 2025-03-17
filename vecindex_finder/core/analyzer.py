@@ -5,20 +5,19 @@ import time
 import importlib
 import os
 import datetime
-from core.config import IndexConfig, PerformanceConfig
+from core.config import Config
 from core.engine import DatabaseEngine, db_engine
 from core.module import MODULE_MAP, BaseModule
-from core.types import QueryData, IndexAndQueryParam, TableInfoConfig
+from core.types import QueryData, IndexAndQueryParam 
 from core.recall import get_recall_values
 from core.param_builder import IndexParamBuilder
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import copy
 from core.logging import logger
 
-# 直接导入optuna相关模块
+# 导入optuna相关模块
 import optuna
 from optuna.visualization import plot_optimization_history, plot_param_importances
-from optuna.visualization import plot_parallel_coordinate, plot_contour
 
 
 def instantiate_module(module_name: str, *args, **kwargs) -> BaseModule:
@@ -51,7 +50,7 @@ def create_index(module):
 
 
 class Analyzer:
-    def __init__(self, index_config: IndexConfig, db_engine_obj: DatabaseEngine, query_data: list[QueryData], performance: PerformanceConfig, table_info: Optional[TableInfoConfig] = None):
+    def __init__(self, db_engine_obj: DatabaseEngine, query_data: list[QueryData],  config_obj: Config):
         """
         Runner 类用于运行索引创建和查询。
 
@@ -62,12 +61,15 @@ class Analyzer:
             limit: 查询数据表中查询的行数
             table_info: 表信息配置
         """
-        self.index_config = index_config
+        self.config = config_obj
+        self.index_config = config_obj.index_config
         self.db_engine = db_engine_obj or db_engine
         self.query_data = query_data
-        self.performance = performance
-        self.min_recall = performance.min_recall
-        self.table_info = table_info
+        self.performance = config_obj.performance
+        self.min_recall = config_obj.performance.min_recall
+        self.table_info = config_obj.table_info
+        self.parallel_workers = config_obj.parallel_workers
+        self.initial_explore_params = config_obj.initial_explore_params
 
         # 创建结果存储目录
         if not os.path.isdir(os.path.join("results")):
@@ -85,11 +87,20 @@ class Analyzer:
         使用Optuna优化索引创建参数，让analyze_with_param自动找到满足召回率要求的查询参数
         """
         # 获取理论最优参数作为起点
-        param_builder = IndexParamBuilder(self.table_info.sample_table_count, 
+        if self.initial_explore_params.manual_param:
+            if not self.initial_explore_params.index_param or not self.initial_explore_params.query_param:
+                raise ValueError("当前initial_explore_params配置的 manual_param 为true，索引参数和查询参数不能为空")
+            theoretical_params = {
+                "index_param": self.initial_explore_params.index_param,
+                "query_param": self.initial_explore_params.query_param
+            }
+            logger.info(f"使用用户设置参数作为优化起点: {theoretical_params}")
+        else:
+            param_builder = IndexParamBuilder(self.table_info.sample_table_count, 
                                           self.table_info.dimension, 
                                           self.index_config.find_index_type)
-        theoretical_params = param_builder.get_theoretical_param()
-        logger.info(f"获取理论最优参数作为优化起点: {theoretical_params}")
+            theoretical_params = param_builder.get_theoretical_param()
+            logger.info(f"获取理论最优参数作为优化起点: {theoretical_params}")
         
         # 检查理论参数中index_param是否为空
         is_index_param_empty = not theoretical_params.index_param or all(
@@ -214,8 +225,6 @@ class Analyzer:
                 # 创建一个综合得分 (权重可调整)
                 # 索引创建时间权重
                 index_time_weight = self.performance.weight["create_index_time"]
-                # 索引大小权重
-                index_size_weight = self.performance.weight["index_size"]
                 # 查询性能权重
                 qps_weight = self.performance.weight["qps"]
                 
@@ -225,12 +234,10 @@ class Analyzer:
                 # 计算综合得分 - 越小越好
                 # 使用更健壮的归一化方法
                 # 对于索引创建时间：转换为秒并直接使用
-                # 对于索引大小：转换为MB并直接使用 
                 # 对于查询时间：转换为毫秒并直接使用
-                # 这样三个指标的量级更接近，避免某个指标因数值过大或过小而被放大或忽略
+                # 这样两个指标的量级更接近，避免某个指标因数值过大或过小而被放大或忽略
                 score = (
                     index_time_weight * result["create_index_time"] + 
-                    index_size_weight * (result["index_size"] / (1024 * 1024)) +  # 转为MB
                     qps_weight * query_time_ms  # 使用毫秒单位的查询时间
                 )
                 
@@ -242,7 +249,6 @@ class Analyzer:
                     "avg_query_time_s": result["best_performance"]["avg_query_time"],
                     "qps": result["best_performance"]["qps"],
                     "weighted_create_index_time": index_time_weight * result["create_index_time"],
-                    "weighted_index_size": index_size_weight * (result["index_size"] / (1024 * 1024)),
                     "weighted_query_time": qps_weight * query_time_ms
                 }
                 
@@ -274,7 +280,6 @@ class Analyzer:
                 logger.info(f"试验 {trial.number} 评分详情:")
                 logger.info(f"  总分: {score:.6f}")
                 logger.info(f"  创建索引时间: {result['create_index_time']:.2f}秒 -> 权重贡献: {normalized_metrics['weighted_create_index_time']:.6f}")
-                logger.info(f"  索引大小: {normalized_metrics['index_size_mb']:.2f}MB -> 权重贡献: {normalized_metrics['weighted_index_size']:.6f}")
                 logger.info(f"  查询时间: {normalized_metrics['query_time_ms']:.2f}毫秒 -> 权重贡献: {normalized_metrics['weighted_query_time']:.6f}")
                 
                 # 保存每次试验的详细结果
@@ -324,7 +329,7 @@ class Analyzer:
             logger.warning(f"添加理论最优解失败: {e}")
         
         # 运行优化过程
-        n_trials = 20  # 可以根据计算资源和时间调整
+        n_trials = self.config.explore_times  # 可以根据计算资源和时间调整
         logger.info(f"开始索引参数优化，将尝试{n_trials}组索引参数")
         
         try:
@@ -357,17 +362,6 @@ class Analyzer:
                 fig2 = plot_param_importances(study)
                 fig2.write_html(os.path.join(self.result_dir, "param_importances.html"))
                 
-                # 绘制参数关系
-                fig3 = plot_parallel_coordinate(study)
-                fig3.write_html(os.path.join(self.result_dir, "parallel_coordinate.html"))
-                
-                # 绘制参数等高线图
-                if len(best_params) >= 2:
-                    try:
-                        fig4 = plot_contour(study)
-                        fig4.write_html(os.path.join(self.result_dir, "contour.html"))
-                    except Exception:
-                        logger.warning("无法绘制等高线图")
                 
                 logger.info(f"已生成可视化报告在 {self.result_dir} 目录下")
             except Exception as e:
@@ -397,7 +391,7 @@ class Analyzer:
             best_result = {
                 "create_index_time": best_trial.user_attrs["create_index_time"],
                 "index_size": best_trial.user_attrs["index_size"],
-                "table_size": best_trial_result.get("table_size", 0),
+                "table_size": best_trial.user_attrs["table_size"],
                 "index_type": index_type,
                 "index_param": best_trial_result['index_param'],
                 "best_query_param": best_trial_result["best_query_param"],
@@ -430,7 +424,8 @@ class Analyzer:
                 'table_name': self.table_info.sample_table_name,
                 'vector_column_name': self.table_info.vector_column_name,
                 'metric': self.table_info.metric,
-                'db_engine_obj': self.db_engine
+                'db_engine_obj': self.db_engine,
+                'parallel_workers': self.parallel_workers
             }
             
             # 过滤掉索引参数中的range参数，只保留实际参数
@@ -646,7 +641,7 @@ class Analyzer:
         else:
             logger.info(f"初始参数 {primary_name}={current_param[primary_name]}, 召回率={initial_recall:.6f}, 查询时间={initial_avg_query_time:.6f}秒, QPS={initial_qps:.4f}")
         
-        max_iterations = 20  # 最大迭代次数
+        max_iterations = self.config.explore_times  # 最大迭代次数
         iterations = 0
         
         # 尝试增加参数策略：先尝试只增加主参数，如果效果不明显再同时增加次要参数
@@ -836,7 +831,7 @@ class Analyzer:
         else:
             logger.info(f"初始参数 {primary_name}={current_param[primary_name]}, 召回率={recall:.6f}, 查询时间={avg_query_time:.6f}秒, QPS={qps:.4f}")
         
-        max_iterations = 20  # 最大迭代次数
+        max_iterations = self.config.explore_times  # 最大迭代次数
         iterations = 0
         
         # 减小参数策略：先尝试减小次要参数（如果有），然后再减小主参数

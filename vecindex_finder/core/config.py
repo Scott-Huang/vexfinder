@@ -7,7 +7,7 @@ import multiprocessing
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from core.logging import logger
-from core.types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexParamsConfig
+from core.types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexParamsConfig, InitialExploreParamsConfig
 
 
 class Config(BaseModel):
@@ -18,9 +18,10 @@ class Config(BaseModel):
     query: QueryConfig = Field(default_factory=QueryConfig)
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
     index_config: IndexConfig = Field(default_factory=IndexConfig)
-    index_params: IndexParamsConfig = Field(default_factory=IndexParamsConfig)
+    initial_explore_params: InitialExploreParamsConfig = Field(default_factory=InitialExploreParamsConfig)
+    manual_index_params: IndexParamsConfig = Field(default_factory=IndexParamsConfig)
     parallel_workers: Optional[int] = None
-    explore_factor: float = 0.3
+    explore_times: int = 20
     
     @field_validator('parallel_workers', mode='before')
     @classmethod
@@ -30,12 +31,12 @@ class Config(BaseModel):
             return max(1, int(multiprocessing.cpu_count() * 0.75))
         return v
     
-    @field_validator('explore_factor', mode='before')
+    @field_validator('explore_times', mode='before')
     @classmethod
-    def set_explore_factor(cls, v):
-        """设置探索度数"""
+    def set_explore_times(cls, v):
+        """设置探索次数"""
         if v is None:
-            return 0.3
+            return 20
         return v
 
     def prepare_with_yaml(self, config_path) -> 'Config':

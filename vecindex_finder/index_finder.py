@@ -69,7 +69,7 @@ def main():
             logger.info("跳过数据采样步骤，使用已有的采样数据")
             config.table_info.sample_table_count = sampling.get_sample_table_count()
             config.table_info.query_table_count = sampling.get_query_table_count()
-        
+            config.table_info.original_table_count = sampling.get_original_table_count()
         
         # 计算距离
         if not args.skip_distance_computation:
@@ -85,12 +85,14 @@ def main():
         
         # 创建索引分析器
         logger.info("创建索引分析器")
-        analyzer = Analyzer(config.index_config, db_engine, query_data, config.performance, config.table_info)
+        analyzer = Analyzer( db_engine, query_data, config)
         
         # 查找最佳索引参数
         logger.info("开始查找最佳索引参数")
         best_result = analyzer.analyze()
         logger.info(f"找到最佳索引参数: {json.dumps(best_result, indent=4)}")
+
+        
 
         
     except Exception as e:

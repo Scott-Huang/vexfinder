@@ -41,6 +41,7 @@ class Sampling:
         # 获取表大小
         cursor.execute(f"SELECT COUNT(*) FROM {self.config.table_info.table_name}")
         total_count = cursor.fetchone()[0]
+        self.config.table_info.original_table_count = total_count
         
         # 根据配置文件中的默认采样比例计算采样数量
         sample_count = int(total_count * self.config.sampling.default_ratio)
@@ -144,20 +145,43 @@ class Sampling:
         connection.close()
         return [QueryData(id=row[0], vectors=json.loads(row[1]), distances=json.loads(row[2])) for row in query_data]
     
+
+    def get_table_count(self, table_name: str) -> int:
+        """
+        获取指定表中的数据数量
+        Returns:
+            指定表中的数据数量
+        """
+        connection = self.db_engine.get_connection()
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+        actual_count = cursor.fetchone()[0]
+        connection.close()
+        return actual_count
+    
+    def get_original_table_count(self) -> int:
+        """
+        获取原始表中的数据数量
+        Returns:
+            原始表中的数据数量
+        """
+        return self.get_table_count(self.config.table_info.table_name)
+   
     def get_sample_table_count(self) -> int:
         """
         获取采样表中的数据数量
         Returns:
             采样表中的数据数量
         """
-        connection = self.db_engine.get_connection()
-        cursor = connection.cursor()
-        cursor.execute(f"SELECT COUNT(*) FROM {self.config.table_info.sample_table_name}")
-        actual_count = cursor.fetchone()[0]
-        self.config.table_info.sample_table_count = actual_count
-        logger.info(f"共有 {actual_count} 条采样数据")
-        connection.close()
-        return actual_count
+        return self.get_table_count(self.config.table_info.sample_table_name)
+
+    def get_query_table_count(self) -> int:
+        """
+        获取查询表中的数据数量
+        Returns:
+            查询表中的数据数量
+        """
+        return self.get_table_count(self.config.table_info.query_table_name)
 
     def get_query_table_count(self) -> int:
         """

@@ -18,3 +18,5 @@ venv
 
 .idea
 cursor
+
+vecindex_finder/results/*

@@ -18,9 +18,10 @@ class TableInfoConfig(BaseModel):
     dimension: int = 128
     metric: str = "l2" # l2, ip, cosine
     _sample_table_name: Optional[str] = None
-    sample_table_count: int = 1000000
+    sample_table_count: int = 0
     _query_table_name: Optional[str] = None
-    query_table_count: int = 1000
+    query_table_count: int = 0
+    original_table_count: int = 0
 
     @field_validator('metric')
     @classmethod
@@ -73,8 +74,15 @@ class PerformanceConfig(BaseModel):
 
 class IndexParamsConfig(BaseModel):
     """索引参数配置"""
-    index_args: List[Dict[str, int]] = [] # 索引参数
-    query_args: List[Dict[str, int]] = [] # 查询参数
+    params: List[Dict[str, Any]] = [] # 索引参数
+
+
+
+class InitialExploreParamsConfig(BaseModel):
+    """初始探索参数配置"""
+    manual_param: bool = False
+    index_param: Dict[str, Any] = {} # 索引参数
+    query_param: Dict[str, Any] = {} # 查询参数
 
 
 class IndexConfig(BaseModel):
