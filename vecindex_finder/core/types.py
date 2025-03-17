@@ -23,6 +23,7 @@ class TableInfoConfig(BaseModel):
     query_table_count: int = 0
     original_table_count: int = 0
 
+
     @field_validator('metric')
     @classmethod
     def validate_metric(cls, v):
@@ -72,17 +73,13 @@ class PerformanceConfig(BaseModel):
     }
 
 
-class IndexParamsConfig(BaseModel):
-    """索引参数配置"""
-    params: List[Dict[str, Any]] = [] # 索引参数
-
-
 
 class InitialExploreParamsConfig(BaseModel):
     """初始探索参数配置"""
     manual_param: bool = False
     index_param: Dict[str, Any] = {} # 索引参数
     query_param: Dict[str, Any] = {} # 查询参数
+
 
 
 class IndexConfig(BaseModel):
@@ -111,7 +108,7 @@ class QueryData(BaseModel):
 class IndexAndQueryParam(BaseModel):
     """索引和查询参数"""
     index_type: str
-    index_param: Dict[str, Any]
+    index_param: Optional[Dict[str, Any]] = None
     query_param: Dict[str, Any]
 
     def to_dict(self):

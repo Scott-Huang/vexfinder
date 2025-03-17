@@ -20,3 +20,7 @@ venv
 cursor
 
 vecindex_finder/results/*
+vecindex_finder/reports/*
+vecindex_finder/logs/*
+
+offline_packages/*

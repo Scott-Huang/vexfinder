@@ -10,9 +10,10 @@ from core.engine import DatabaseEngine, db_engine
 from core.module import MODULE_MAP, BaseModule
 from core.types import QueryData, IndexAndQueryParam 
 from core.recall import get_recall_values
-from core.param_builder import IndexParamBuilder
+from core.param_builder import get_theoretical_param
 from typing import Dict, Any
 import copy
+import json
 from core.logging import logger
 
 # 导入optuna相关模块
@@ -72,34 +73,38 @@ class Analyzer:
         self.initial_explore_params = config_obj.initial_explore_params
 
         # 创建结果存储目录
-        if not os.path.isdir(os.path.join("results")):
-            os.makedirs(os.path.join("results"))
+        if not os.path.isdir(os.path.join(self.config.output_dir)):
+            os.makedirs(os.path.join(self.config.output_dir))
 
         # 创建索引类型_日期时间格式的文件夹
         timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        self.result_dir = os.path.join("results", f"{self.index_config.find_index_type}_{timestamp}")
+        self.result_dir = os.path.join(self.config.output_dir, f"{self.index_config.find_index_type}_{timestamp}")
         if not os.path.isdir(self.result_dir):
             os.makedirs(self.result_dir)
 
 
     def analyze(self):
         """
-        使用Optuna优化索引创建参数，让analyze_with_param自动找到满足召回率要求的查询参数
+        分析参数
         """
+        
+        if not self.index_config.auto:
+            return self.run_with_manual_index_params()
+            
+
         # 获取理论最优参数作为起点
         if self.initial_explore_params.manual_param:
             if not self.initial_explore_params.index_param or not self.initial_explore_params.query_param:
                 raise ValueError("当前initial_explore_params配置的 manual_param 为true，索引参数和查询参数不能为空")
-            theoretical_params = {
-                "index_param": self.initial_explore_params.index_param,
-                "query_param": self.initial_explore_params.query_param
-            }
+            theoretical_params = IndexAndQueryParam(
+                index_type=self.index_config.find_index_type,
+                index_param=self.initial_explore_params.index_param,
+                query_param=self.initial_explore_params.query_param
+            )
             logger.info(f"使用用户设置参数作为优化起点: {theoretical_params}")
         else:
-            param_builder = IndexParamBuilder(self.table_info.sample_table_count, 
-                                          self.table_info.dimension, 
+            theoretical_params = get_theoretical_param(self.table_info.sample_table_count, 
                                           self.index_config.find_index_type)
-            theoretical_params = param_builder.get_theoretical_param()
             logger.info(f"获取理论最优参数作为优化起点: {theoretical_params}")
         
         # 检查理论参数中index_param是否为空
@@ -109,11 +114,155 @@ class Analyzer:
         
         # 如果索引参数为空，则直接使用理论参数调用analyze_with_param
         if is_index_param_empty:
-            logger.info("索引参数为空，仅需搜索查询参数，跳过索引参数优化过程")
-            # 获取结果
-            result = self.analyze_with_param(theoretical_params)
-            return result
+            return self.run_empty_index_param(theoretical_params)
+        else:
+            return self.run_with_optuna(theoretical_params)
+    
+
+    def run_with_manual_index_params(self):
+        """
+        使用手动设置的索引参数
+        """
+        if not self.config.manual_index_params:
+                raise ValueError("当前index_config配置的 auto 为false，需要设置manual_index_params")
             
+        manual_index_params = self.config.manual_index_params
+        
+        # 存储所有测试结果
+        all_results = []
+        best_result = None
+        best_performance = None
+
+        if self.index_config.find_index_type == "diskann":
+            logger.warning("diskann索引类型不支持手动设置索引参数，仅支持默认查询参数")
+            param = IndexAndQueryParam(
+                index_type=self.index_config.find_index_type,
+                index_param={},
+                query_param=manual_index_params[0]["default_query_param"]
+            )
+
+            print(param)
+            
+            return self.run_empty_index_param(param)
+
+            
+        # 遍历所有索引参数
+        for param_group in manual_index_params:
+            if "index_param" not in param_group:
+                raise ValueError(f"参数组缺少index_param: {param_group}")
+                
+            index_param = param_group["index_param"]
+
+            # 检查是否有query_params或query_param
+            query_param = None
+            if "default_query_param" in param_group:
+                query_param = param_group["default_query_param"]
+            else:
+                logger.warning(f"参数组缺少default_query_param: {param_group}")
+                continue
+            
+            try:
+                # 创建参数对象
+                param = IndexAndQueryParam(
+                    index_type=self.index_config.find_index_type,
+                    index_param=index_param,
+                    query_param=query_param
+                )
+                
+                # 分析当前参数组合
+                logger.info(f"测试参数组合: index_param={index_param}, query_param={query_param}")
+                result = self.analyze_with_param(param)
+                result["table_info"] = self.table_info.model_dump(mode="json")
+                
+                # 保存结果
+                all_results.append(result)
+                
+                # 检查是否成功满足最低召回率
+                if not result["success"]:
+                    logger.info(f"参数组合未达到最低召回率要求: {self.min_recall}")
+                    continue
+                
+                # 更新最佳结果
+                if best_result is None or self._is_better_performance(result, best_result):
+                    best_result = result
+                    best_performance = result["best_performance"]
+                    logger.info(f"找到更优的参数组合: 召回率={best_performance['recall']:.6f}, 查询时间={best_performance['avg_query_time']:.6f}秒, QPS={best_performance['qps']:.4f}")
+            
+            except Exception as e:
+                logger.error(f"测试参数组合失败: {str(e)}")
+        
+        # 保存所有结果
+        with open(os.path.join(self.result_dir, "all_results.json"), "w") as f:
+            json.dump(all_results, f, indent=2)
+        logger.info(f"已保存所有测试结果到 {os.path.join(self.result_dir, 'all_results.json')}")
+        
+        # 保存最佳结果
+        if best_result:
+            with open(os.path.join(self.result_dir, "best_result.json"), "w") as f:
+                json.dump(best_result, f, indent=2)
+            logger.info(f"已保存最佳结果到 {os.path.join(self.result_dir, 'best_result.json')}")
+            return best_result
+        else:
+            logger.warning("给出的参数组合中未找到满足召回率要求的参数组合")
+            return None
+    
+    def _is_better_performance(self, new_result, current_best):
+        """
+        比较两个结果，判断新结果是否优于当前最佳结果
+        
+        Args:
+            new_result: 新结果
+            current_best: 当前最佳结果
+            
+        Returns:
+            bool: 如果新结果更好则返回True
+        """
+        # 两个结果都必须满足最低召回率要求
+        if not new_result["success"] or not current_best["success"]:
+            return new_result["success"]
+        
+        # 获取权重
+        index_time_weight = self.performance.weight["create_index_time"]
+        qps_weight = self.performance.weight["qps"]
+        
+        # 计算新结果的得分
+        new_query_time_ms = new_result["best_performance"]["avg_query_time"] * 1000.0
+        new_score = (
+            index_time_weight * new_result["create_index_time"] + 
+            qps_weight * new_query_time_ms
+        )
+        
+        # 计算当前最佳结果的得分
+        current_query_time_ms = current_best["best_performance"]["avg_query_time"] * 1000.0
+        current_score = (
+            index_time_weight * current_best["create_index_time"] + 
+            qps_weight * current_query_time_ms
+        )
+        
+        # 分数越低越好
+        return new_score < current_score
+
+    def run_empty_index_param(self, param: IndexAndQueryParam):
+        """
+        使用空索引参数
+        """
+        logger.info("索引参数为空，仅需搜索查询参数，跳过索引参数优化过程")
+        # 获取结果
+        result = self.analyze_with_param(param)
+        result["table_info"] = self.table_info.model_dump(mode="json")
+        
+        # 直接保存结果
+        with open(os.path.join(self.result_dir, "best_result.json"), "w") as f:
+            json.dump(result, f, indent=2)
+        logger.info(f"已保存最佳结果到 {os.path.join(self.result_dir, 'best_result.json')}")
+        
+        return result
+    
+
+    def run_with_optuna(self, theoretical_params: Dict[str, Any]):
+        """
+        使用Optuna优化索引创建参数
+        """
         # 索引参数范围定义 (根据不同索引类型)
         index_param_ranges = {
             "ivfflat": {
@@ -245,6 +394,7 @@ class Analyzer:
                 normalized_metrics = {
                     "create_index_time_s": result["create_index_time"],
                     "index_size_mb": result["index_size"] / (1024 * 1024),
+                    "table_size_mb": result["table_size"] / (1024 * 1024),
                     "query_time_ms": query_time_ms,
                     "avg_query_time_s": result["best_performance"]["avg_query_time"],
                     "qps": result["best_performance"]["qps"],
@@ -259,6 +409,7 @@ class Analyzer:
                     "best_query_param": result["best_query_param"],
                     "create_index_time": result["create_index_time"],
                     "index_size": result["index_size"],
+                    "table_size": result["table_size"],
                     "score": score,
                     "best_performance": result["best_performance"],
                     "normalized_metrics": normalized_metrics  # 添加归一化指标
@@ -269,6 +420,7 @@ class Analyzer:
                 trial.set_user_attr("recall", result["best_performance"]["recall"])
                 trial.set_user_attr("create_index_time", result["create_index_time"])
                 trial.set_user_attr("index_size", result["index_size"])
+                trial.set_user_attr("table_size", result["table_size"])
                 trial.set_user_attr("avg_query_time", result["best_performance"]["avg_query_time"])
                 trial.set_user_attr("qps", result["best_performance"]["qps"])
                 
@@ -283,18 +435,21 @@ class Analyzer:
                 logger.info(f"  查询时间: {normalized_metrics['query_time_ms']:.2f}毫秒 -> 权重贡献: {normalized_metrics['weighted_query_time']:.6f}")
                 
                 # 保存每次试验的详细结果
-                import json
                 with open(os.path.join(self.result_dir, f"trial_{trial.number}.json"), "w") as f:
                     json.dump({
                         "trial_number": trial.number,
+                        "table_info": self.table_info.model_dump(mode="json"),
                         "best_query_param": {k: v for k, v in result["best_query_param"].items() if not k.endswith('_range')},
                         "create_index_time": result["create_index_time"],
                         "index_size": result["index_size"] / (1024 * 1024),  # MB
+                        "table_size": result["table_size"] / (1024 * 1024),  # MB
                         "recall": result["best_performance"]["recall"],
                         "avg_query_time": result["best_performance"]["avg_query_time"],
                         "qps": result["best_performance"]["qps"],
                         "score": score,
-                        "normalized_metrics": normalized_metrics  # 添加归一化指标
+                        "index_param": result["index_param"],
+                        "best_performance": result["best_performance"],
+                        "find_index_type": index_type,
                     }, f, indent=2)
                 
                 return score
@@ -349,6 +504,7 @@ class Analyzer:
             logger.info(f"- 召回率: {best_trial.user_attrs['recall']:.6f}")
             logger.info(f"- 创建索引时间: {best_trial.user_attrs['create_index_time']:.2f}秒")
             logger.info(f"- 索引大小: {best_trial.user_attrs['index_size']/1024/1024:.2f}MB")
+            logger.info(f"- 表大小: {best_trial.user_attrs['table_size']/1024/1024:.2f}MB")
             logger.info(f"- 平均查询时间: {best_trial.user_attrs['avg_query_time']:.6f}秒")
             logger.info(f"- QPS: {best_trial.user_attrs['qps']:.4f}")
             
@@ -363,12 +519,11 @@ class Analyzer:
                 fig2.write_html(os.path.join(self.result_dir, "param_importances.html"))
                 
                 
-                logger.info(f"已生成可视化报告在 {self.result_dir} 目录下")
+                logger.info(f"查找过程已生成可视化报告在 {self.result_dir} 目录下")
             except Exception as e:
-                logger.warning(f"生成可视化报告失败: {e}")
+                logger.warning(f"查找过程生成可视化报告失败: {e}")
             
             # 保存所有优化结果
-            import json
             with open(os.path.join(self.result_dir, "all_results.json"), "w") as f:
                 json.dump(
                     [{k: (v if not isinstance(v, dict) else {kk: vv for kk, vv in v.items() if not kk.endswith('_range')}) 
@@ -389,6 +544,7 @@ class Analyzer:
                 
             # 从优化结果中获取完整的参数信息
             best_result = {
+                "table_info": self.table_info.model_dump(mode="json"),
                 "create_index_time": best_trial.user_attrs["create_index_time"],
                 "index_size": best_trial.user_attrs["index_size"],
                 "table_size": best_trial.user_attrs["table_size"],
@@ -400,12 +556,14 @@ class Analyzer:
                 "success": bool(best_trial.user_attrs["recall"] >= self.min_recall)
             }
             
+            # 保存最佳结果到best_result.json文件
+            with open(os.path.join(self.result_dir, "best_result.json"), "w") as f:
+                json.dump(best_result, f, indent=2)
+            logger.info(f"已保存最佳结果到 {os.path.join(self.result_dir, 'best_result.json')}")
             return best_result
         else:
             logger.warning("未能找到有效的参数组合")
-            # 如果没有找到任何有效参数，返回理论最优的结果
-            return self.analyze_with_param(theoretical_params)
-
+            raise ValueError("未能找到有效的参数组合，请检查配置文件和数据")
 
     def analyze_with_param(self, param: IndexAndQueryParam):
         """

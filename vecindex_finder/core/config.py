@@ -4,14 +4,16 @@
 import os
 import yaml
 import multiprocessing
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from core.logging import logger
-from core.types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexParamsConfig, InitialExploreParamsConfig
+from core.types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexAndQueryParam, InitialExploreParamsConfig
 
 
 class Config(BaseModel):
     """纯ORM风格配置管理类"""
+    output_dir: str = Field(default='./results')
+    reports_dir: str = Field(default='./reports')
     connection: ConnectionConfig = Field(default_factory=ConnectionConfig)
     table_info: TableInfoConfig = Field(default_factory=TableInfoConfig)
     sampling: SamplingConfig = Field(default_factory=SamplingConfig)
@@ -19,7 +21,7 @@ class Config(BaseModel):
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
     index_config: IndexConfig = Field(default_factory=IndexConfig)
     initial_explore_params: InitialExploreParamsConfig = Field(default_factory=InitialExploreParamsConfig)
-    manual_index_params: IndexParamsConfig = Field(default_factory=IndexParamsConfig)
+    manual_index_params: List[Dict[str, Any]] = []
     parallel_workers: Optional[int] = None
     explore_times: int = 20
     

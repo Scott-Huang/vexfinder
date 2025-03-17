@@ -1,4 +1,7 @@
-# OpenGauss数据库适配器配置
+# 结果输出目录
+output_dir: "./results"
+# 报告输出目录
+reports_dir: "./reports"
 
 # 数据库连接配置
 connection:
@@ -22,7 +25,7 @@ table_info:
 # 采样配置
 sampling:
   # 默认采样比例(0-1)，如果表中数据量小于min_sample_count，则采样min_sample_count条数据，如果表中数据量大于max_sample_count，则采样max_sample_count条数据
-  default_ratio: 1
+  default_ratio: 0.1
   # 最小采样数量
   min_sample_count: 10000
   # 最大采样数量
@@ -43,7 +46,7 @@ performance:
   # limit, 每次查询的限制数量
   limit: 100
   # 最低容忍召回率
-  min_recall: 0.99
+  min_recall: 0.98
   # 参数评价权重（相加为1），满足最低召回率的前提下，考虑的优先级，查找最佳参数时，会依据权重计算得分。
   weight:
     create_index_time: 0.3
@@ -62,14 +65,14 @@ index_config:
   find_index_type: "ivfflat"
   # 是否预热缓存，如果为true，则程序会先预热缓存，建议图索引（hnsw/diskann）设置为true，其他索引设置为false。
   prepare_cache: false
-  # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数。如果为false，需要设置index_params。
+  # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数。如果为false，需要设置manual_index_params。
   auto: true
 
 
 # 初始探索参数配置, 建议用户在了解索引类型和数据集的情况下，手动设置理论参数。
 initial_explore_params:
   # 是否使用手动设置的参数作为优化起点, 如果为true，index_param 和 query_param为必填项。 则使用用户设置的参数作为优化起点。否则会根据数据量和维度自动生成理论参数作为初始参数进行探索
-  manual_param: false
+  manual_param: true
   # 索引参数，如果manual_param为true，则需要设置index_param。
   index_param:
     ivf_nlist: 1024
@@ -80,62 +83,42 @@ initial_explore_params:
     ivf_probes_range: [10, 2000]
 
 
-# 手动索引参数配置, 如果auto为false，则会探测下方手动给出的参数，从中选择最佳参数。
+# 手动索引参数配置, 如果auto为false，则会探测下方手动给出的索引参数，找出最佳参数。 
+# default_query_param 为基准参数，会根据该参数查找当前索引参数下的最佳查询参数。
+
 manual_index_params:
-  params:
     # 索引参数列表
     -
       index_param:
-        ivf_nlist: 1024
-      query_param:
-        ivf_probes: 30
-    -
-      index_param:
-        ivf_nlist: 1024
-      query_param:
-        ivf_probes: 40
-    -
-      index_param:
-        ivf_nlist: 1024
-      query_param:
-        ivf_probes: 50
-
+      default_query_param:
+        diskann_search_list_size: 20
 
 # 以下是各类索引参数示例，根据需要配置
 # ivfflat参数示例
 # index_param:
-#   - ivf_nlist: 1024
-# query_param:
-#   - ivf_probes: 30
+#   ivf_nlist: 1024
+# default_query_param:
+#   ivf_probes: 30
 # 
 # ivfpq参数示例
 # index_param:
-#   - ivf_nlist: 1024
-#     num_subquantizers: 8
-#     nbits: 16
-#   - ivf_nlist: 2048
-#     num_subquantizers: 8
-#     nbits: 16
-# query_param:
-#   - ivf_probes: 30
-#     ivfpq_refine_k_factor: 4
-#   - ivf_probes: 60
-#     ivfpq_refine_k_factor: 4
+#   ivf_nlist: 1024
+#   num_subquantizers: 8
+#   nbits: 16
+# default_query_param:
+#   ivf_probes: 30
+#   ivfpq_refine_k_factor: 4
 # 
 # hnsw参数示例
 # index_param:
-#   - m: 16
-#     ef_construction: 100
-#   - m: 24
-#     ef_construction: 200
-# query_param:
-#   - hnsw_ef_search: 80
-#   - hnsw_ef_search: 200
+#   m: 16
+#   ef_construction: 100
+# default_query_param:
+#   hnsw_ef_search: 80
 # 
 # diskann参数示例
 # index_param:
-# query_param:
-#   - diskann_search_list_size: 100
-#   - diskann_search_list_size: 200
+# default_query_param:
+#   diskann_search_list_size: 100
 
 
