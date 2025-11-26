@@ -35,7 +35,7 @@ setup(
     python_requires=">=3.8",
     entry_points={
         "console_scripts": [
-            "vecindexfinder=vecindex_finder.index_finder:main",
+            "vecindexfinder=index_finder:main",
         ],
     },
 ) 

@@ -19,8 +19,8 @@ venv
 .idea
 cursor
 
-vecindex_finder/results/*
-vecindex_finder/reports/*
-vecindex_finder/logs/*
+results/*
+reports/*
+logs/*
 
 offline_packages/*

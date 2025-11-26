@@ -6,30 +6,30 @@ reports_dir: "./reports"
 # 数据库连接配置
 connection:
   host: "127.0.0.1"
-  port: 6432
-  user: "ann"
-  password: "Huawei@123"
-  dbname: "ann"
+  port: 28457
+  user: "u1"
+  password: "gauss@234"
+  dbname: "d1"
 
 # 表信息
 table_info:
   # 表名
-  table_name: "items"
+  table_name: "c1"
   # 向量字段名
-  vector_column_name: "embedding"
+  vector_column_name: "repr"
   # 向量维度
-  dimension: 128
+  dimension: 768
   # 距离度量类型, l2/ip/cosine
-  metric: "l2"
+  metric: "cosine"
 
 # 采样配置
 sampling:
   # 默认采样比例(0-1)，如果表中数据量小于min_sample_count，则采样min_sample_count条数据，如果表中数据量大于max_sample_count，则采样max_sample_count条数据
-  default_ratio: 0.1
+  default_ratio: 0.5
   # 最小采样数量
-  min_sample_count: 10000
+  min_sample_count: 100000
   # 最大采样数量
-  max_sample_count: 1000000
+  max_sample_count: 10000000
 
 # query配置
 query:
@@ -46,25 +46,26 @@ performance:
   # limit, 每次查询的限制数量
   limit: 100
   # 最低容忍召回率
-  min_recall: 0.98
-  # 参数评价权重（相加为1），满足最低召回率的前提下，考虑的优先级，查找最佳参数时，会依据权重计算得分。
+  min_recall: 0.99
+  # 参数评价权重，满足最低召回率的前提下，考虑的优先级，查找最佳参数时，会依据权重计算得分。
   weight:
-    create_index_time: 0.3
-    qps: 0.7
+    index_size: 0.08        # 单位GB
+    create_index_time: 0.02 # 单位分钟
+    qps: 0.90               # 单位毫秒
 
 
 # 并行工作线程数，最小为1, 如果为null，则使用默认值为75%的CPU核心数。建议为CPU核心数的75%。
 parallel_workers: null
 
 # 搜索创建索引参数的次数，次数越多，搜索的创建索引的参数越多，结果越准确，默认值为20.
-explore_times: 6
+explore_times: 20
 
 # 索引类型配置
 index_config:
-  # 需要查找的索引类型, ivfflat/ivfpq/hnsw/diskann, 只需要指定一个。
-  find_index_type: "ivfflat"
-  # 是否预热缓存，如果为true，则程序会先预热缓存，建议图索引（hnsw/diskann）设置为true，其他索引设置为false。
-  prepare_cache: false
+  # 需要查找的索引类型, graph_index/diskann/ivfflat/ivfpq, 只需要指定一个。
+  find_index_type: "graph_index"
+  # 是否预热缓存，如果为true，则程序会先预热缓存。
+  prepare_cache: true
   # 是否自动选择最佳参数, 如果为true，则程序会根据数据量和维度自动搜查最佳参数。如果为false，需要设置manual_index_params。
   auto: true
 
@@ -72,7 +73,7 @@ index_config:
 # 初始探索参数配置, 建议用户在了解索引类型和数据集的情况下，手动设置理论参数。
 initial_explore_params:
   # 是否使用手动设置的参数作为优化起点, 如果为true，index_param 和 query_param为必填项。 则使用用户设置的参数作为优化起点。否则会根据数据量和维度自动生成理论参数作为初始参数进行探索
-  manual_param: true
+  manual_param: false
   # 索引参数，如果manual_param为true，则需要设置index_param。
   index_param:
     ivf_nlist: 1024
@@ -120,5 +121,3 @@ manual_index_params:
 # index_param:
 # default_query_param:
 #   diskann_search_list_size: 100
-
-

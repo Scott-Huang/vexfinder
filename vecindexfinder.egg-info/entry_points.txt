@@ -1,2 +1,0 @@
-[console_scripts]
-vecindexfinder = vecindex_finder.index_finder:main
