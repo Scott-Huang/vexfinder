@@ -9,7 +9,7 @@ import datetime
 from core.config import Config
 from core.engine import DatabaseEngine, db_engine
 from core.module import MODULE_MAP, BaseModule
-from core.types import QueryData, IndexAndQueryParam
+from core.my_types import QueryData, IndexAndQueryParam
 from core.recall import get_recall_values
 from core.param_builder import get_theoretical_param
 from core.logging import logger

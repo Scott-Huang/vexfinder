@@ -4,11 +4,10 @@
 import os
 import json
 import datetime
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+# import plotly.graph_objects as go
+# from plotly.subplots import make_subplots
 from typing import Dict, Any
 from tabulate import tabulate
-import math
 from core.logging import logger
 from core.param_builder import scale_parameters, scale_query_parameters
 
@@ -174,131 +173,131 @@ class Reportor:
 
         logger.info(f"已生成文本报告: {os.path.join(output_dir, 'report.md')}")
     
-    def _generate_visual_report(self, report_data: Dict[str, Any], output_dir: str):
-        if not self.all_trials:
-            logger.warning("未找到试验数据，无法生成可视化报告")
-            return
+    # def _generate_visual_report(self, report_data: Dict[str, Any], output_dir: str):
+    #     if not self.all_trials:
+    #         logger.warning("未找到试验数据，无法生成可视化报告")
+    #         return
 
-        try:
-            self._create_parameter_comparison(report_data, output_dir)
-            if len(self.all_trials) > 1:
-                self._create_trials_comparison(output_dir)
-            logger.info(f"已生成可视化报告在 {output_dir} 目录下")
-        except Exception as e:
-            logger.error(f"生成可视化报告失败: {str(e)}")
+    #     try:
+    #         self._create_parameter_comparison(report_data, output_dir)
+    #         if len(self.all_trials) > 1:
+    #             self._create_trials_comparison(output_dir)
+    #         logger.info(f"已生成可视化报告在 {output_dir} 目录下")
+    #     except Exception as e:
+    #         logger.error(f"生成可视化报告失败: {str(e)}")
 
-    def _create_parameter_comparison(self, report_data: Dict[str, Any], output_dir: str):
-        fig = make_subplots(rows=2, cols=1, subplot_titles=("索引参数对比", "查询参数对比"))
+    # def _create_parameter_comparison(self, report_data: Dict[str, Any], output_dir: str):
+    #     fig = make_subplots(rows=2, cols=1, subplot_titles=("索引参数对比", "查询参数对比"))
 
-        index_params = []
-        sample_values = []
-        recommended_values = []
+    #     index_params = []
+    #     sample_values = []
+    #     recommended_values = []
 
-        for param in report_data['source_data']['recommended_index_param']:
-            if param in report_data['sample_data']['index_param']:
-                index_params.append(param)
-                sample_values.append(report_data['sample_data']['index_param'][param])
-                recommended_values.append(report_data['source_data']['recommended_index_param'][param])
+    #     for param in report_data['source_data']['recommended_index_param']:
+    #         if param in report_data['sample_data']['index_param']:
+    #             index_params.append(param)
+    #             sample_values.append(report_data['sample_data']['index_param'][param])
+    #             recommended_values.append(report_data['source_data']['recommended_index_param'][param])
 
-        fig.add_trace(
-            go.Bar(name="采样数据", x=index_params, y=sample_values, marker_color="blue"),
-            row=1, col=1
-        )
-        fig.add_trace(
-            go.Bar(name="推荐参数", x=index_params, y=recommended_values, marker_color="red"),
-            row=1, col=1
-        )
+    #     fig.add_trace(
+    #         go.Bar(name="采样数据", x=index_params, y=sample_values, marker_color="blue"),
+    #         row=1, col=1
+    #     )
+    #     fig.add_trace(
+    #         go.Bar(name="推荐参数", x=index_params, y=recommended_values, marker_color="red"),
+    #         row=1, col=1
+    #     )
 
-        query_params = []
-        sample_query_values = []
-        recommended_query_values = []
-        for param in report_data['source_data']['recommended_query_param']:
-            if param in report_data['sample_data']['query_param']:
-                query_params.append(param)
-                sample_query_values.append(report_data['sample_data']['query_param'][param])
-                recommended_query_values.append(report_data['source_data']['recommended_query_param'][param])
+    #     query_params = []
+    #     sample_query_values = []
+    #     recommended_query_values = []
+    #     for param in report_data['source_data']['recommended_query_param']:
+    #         if param in report_data['sample_data']['query_param']:
+    #             query_params.append(param)
+    #             sample_query_values.append(report_data['sample_data']['query_param'][param])
+    #             recommended_query_values.append(report_data['source_data']['recommended_query_param'][param])
 
-        fig.add_trace(
-            go.Bar(name="采样数据", x=query_params, y=sample_query_values, marker_color="blue"),
-            row=2, col=1
-        )
-        fig.add_trace(
-            go.Bar(name="推荐参数", x=query_params, y=recommended_query_values, marker_color="red"),
-            row=2, col=1
-        )
+    #     fig.add_trace(
+    #         go.Bar(name="采样数据", x=query_params, y=sample_query_values, marker_color="blue"),
+    #         row=2, col=1
+    #     )
+    #     fig.add_trace(
+    #         go.Bar(name="推荐参数", x=query_params, y=recommended_query_values, marker_color="red"),
+    #         row=2, col=1
+    #     )
 
-        fig.update_layout(
-            title=f"{self.index_type.upper()} 索引参数对比",
-            barmode='group',
-            height=800,
-            width=800
-        )
+    #     fig.update_layout(
+    #         title=f"{self.index_type.upper()} 索引参数对比",
+    #         barmode='group',
+    #         height=800,
+    #         width=800
+    #     )
 
-        fig.write_html(os.path.join(output_dir, "parameter_comparison.html"))
+    #     fig.write_html(os.path.join(output_dir, "parameter_comparison.html"))
     
-    def _create_trials_comparison(self, output_dir: str):
-        trial_numbers = []
-        recalls = []
-        query_times = []
-        index_times = []
-        for trial in self.all_trials:
-            if "trial_number" in trial and "best_performance" in trial:
-                trial_numbers.append(trial["trial_number"])
-                recalls.append(trial["best_performance"].get("recall", 0))
-                query_times.append(trial["best_performance"].get("avg_query_time", 0) * 1000)  # 转为毫秒
-                index_times.append(trial.get("create_index_time", 0))
+    # def _create_trials_comparison(self, output_dir: str):
+    #     trial_numbers = []
+    #     recalls = []
+    #     query_times = []
+    #     index_times = []
+    #     for trial in self.all_trials:
+    #         if "trial_number" in trial and "best_performance" in trial:
+    #             trial_numbers.append(trial["trial_number"])
+    #             recalls.append(trial["best_performance"].get("recall", 0))
+    #             query_times.append(trial["best_performance"].get("avg_query_time", 0) * 1000)  # 转为毫秒
+    #             index_times.append(trial.get("create_index_time", 0))
 
-        fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=("召回率变化", "查询时间变化(毫秒)", "索引创建时间变化(秒)", "召回率与查询时间关系"),
-            specs=[[{}, {}], [{}, {}]]
-        )
+    #     fig = make_subplots(
+    #         rows=2, cols=2,
+    #         subplot_titles=("召回率变化", "查询时间变化(毫秒)", "索引创建时间变化(秒)", "召回率与查询时间关系"),
+    #         specs=[[{}, {}], [{}, {}]]
+    #     )
 
-        fig.add_trace(
-            go.Scatter(x=trial_numbers, y=recalls, mode='lines+markers', name="召回率", 
-                      line=dict(color="blue", width=2)),
-            row=1, col=1
-        )
+    #     fig.add_trace(
+    #         go.Scatter(x=trial_numbers, y=recalls, mode='lines+markers', name="召回率", 
+    #                   line=dict(color="blue", width=2)),
+    #         row=1, col=1
+    #     )
 
-        fig.add_trace(
-            go.Scatter(x=trial_numbers, y=query_times, mode='lines+markers', name="查询时间(毫秒)", 
-                      line=dict(color="red", width=2)),
-            row=1, col=2
-        )
+    #     fig.add_trace(
+    #         go.Scatter(x=trial_numbers, y=query_times, mode='lines+markers', name="查询时间(毫秒)", 
+    #                   line=dict(color="red", width=2)),
+    #         row=1, col=2
+    #     )
 
-        fig.add_trace(
-            go.Scatter(x=trial_numbers, y=index_times, mode='lines+markers', name="索引创建时间(秒)", 
-                      line=dict(color="green", width=2)),
-            row=2, col=1
-        )
+    #     fig.add_trace(
+    #         go.Scatter(x=trial_numbers, y=index_times, mode='lines+markers', name="索引创建时间(秒)", 
+    #                   line=dict(color="green", width=2)),
+    #         row=2, col=1
+    #     )
 
-        fig.add_trace(
-            go.Scatter(x=recalls, y=query_times, mode='markers', name="召回率 vs 查询时间",
-                      marker=dict(size=10, color=trial_numbers, colorscale="Viridis", 
-                                showscale=True, colorbar=dict(title="试验编号"))),
-            row=2, col=2
-        )
+    #     fig.add_trace(
+    #         go.Scatter(x=recalls, y=query_times, mode='markers', name="召回率 vs 查询时间",
+    #                   marker=dict(size=10, color=trial_numbers, colorscale="Viridis", 
+    #                             showscale=True, colorbar=dict(title="试验编号"))),
+    #         row=2, col=2
+    #     )
 
-        fig.update_layout(
-            title=f"{self.index_type.upper()} 索引试验结果对比",
-            height=1000,
-            width=1000,
-            showlegend=False
-        )
+    #     fig.update_layout(
+    #         title=f"{self.index_type.upper()} 索引试验结果对比",
+    #         height=1000,
+    #         width=1000,
+    #         showlegend=False
+    #     )
 
-        fig.update_xaxes(title_text="试验编号", row=1, col=1)
-        fig.update_yaxes(title_text="召回率", row=1, col=1)
+    #     fig.update_xaxes(title_text="试验编号", row=1, col=1)
+    #     fig.update_yaxes(title_text="召回率", row=1, col=1)
 
-        fig.update_xaxes(title_text="试验编号", row=1, col=2)
-        fig.update_yaxes(title_text="查询时间(毫秒)", row=1, col=2)
+    #     fig.update_xaxes(title_text="试验编号", row=1, col=2)
+    #     fig.update_yaxes(title_text="查询时间(毫秒)", row=1, col=2)
 
-        fig.update_xaxes(title_text="试验编号", row=2, col=1)
-        fig.update_yaxes(title_text="索引创建时间(秒)", row=2, col=1)
+    #     fig.update_xaxes(title_text="试验编号", row=2, col=1)
+    #     fig.update_yaxes(title_text="索引创建时间(秒)", row=2, col=1)
 
-        fig.update_xaxes(title_text="召回率", row=2, col=2)
-        fig.update_yaxes(title_text="查询时间(毫秒)", row=2, col=2)
+    #     fig.update_xaxes(title_text="召回率", row=2, col=2)
+    #     fig.update_yaxes(title_text="查询时间(毫秒)", row=2, col=2)
 
-        fig.write_html(os.path.join(output_dir, "trials_comparison.html"))
+    #     fig.write_html(os.path.join(output_dir, "trials_comparison.html"))
 
 
 def generate_report(result_dir: str, reports_dir: str) -> Dict[str, Any]:

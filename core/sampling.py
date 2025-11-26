@@ -6,7 +6,8 @@ import queue
 import threading
 import tqdm
 import json
-from core.types import QueryData
+from core.my_types import QueryData
+
 class Sampling:
     def __init__(self, config_obj: Optional[Config] = None, db_engine_obj: Optional[DatabaseEngine] = None):
         self.config = config_obj or config

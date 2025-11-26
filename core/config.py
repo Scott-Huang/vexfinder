@@ -7,7 +7,7 @@ import multiprocessing
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from core.logging import logger
-from core.types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexAndQueryParam, InitialExploreParamsConfig
+from core.my_types import ConnectionConfig, TableInfoConfig, SamplingConfig, QueryConfig, PerformanceConfig, IndexConfig, IndexAndQueryParam, InitialExploreParamsConfig
 
 
 class Config(BaseModel):

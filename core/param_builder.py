@@ -3,7 +3,7 @@
 
 from typing import Dict, Any
 import math
-from core.types import IndexAndQueryParam
+from core.my_types import IndexAndQueryParam
 
 
 def scale_parameters(index_type: str, params: Dict[str, Any], scale_factor: float) -> Dict[str, Any]:
