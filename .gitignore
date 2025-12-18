@@ -24,3 +24,5 @@ reports/*
 logs/*
 
 offline_packages/*
+index_finder.dist
+index_finder.build

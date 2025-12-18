@@ -169,7 +169,7 @@ class HnswModule(BaseModule):
         # 通过关键字参数接收hnsw_ef_search
         if 'hnsw_ef_search' in kwargs:
             self._ef_search = kwargs['hnsw_ef_search']
-            self._cur.execute("set ef_search = %d" % self._ef_search)
+            self._cur.execute("set hnsw_ef_search = %d" % self._ef_search)
         else:
             raise ValueError("缺少必要的参数'hnsw_ef_search'")
 

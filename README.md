@@ -5,10 +5,10 @@
 ## 主要功能
 
 - 数据采样：从向量数据库表中采样一定比例的数据
-- 索引测试：支持多种索引类型（IVF-FLAT, IVF-PQ, HNSW, DiskANN等）
+- 索引测试：支持多种索引类型（GRAPH_INDEX, IVF-FLAT, IVF-PQ, DiskANN等）
 - 参数优化：测试不同参数组合的性能（QPS和召回率）
 - 性能分析：基于测试结果推荐最优参数配置
-- 结果可视化：生成性能对比图表
+- 结果可视化：生成性能对比图表 (可执行打包文件不支持，使用该功能需要取消reporter.py注释部分使用python运行)
 
 
 ## 安装
@@ -67,3 +67,6 @@ python -m vecindex_finder.index_finder --config config.yml
 vecindexfinder --config my_config.yml
 ```
 
+### 数据库连接
+
+目前发现似乎只支持md5加密链接，需要使用password_encryption_type=0创建链接用户
